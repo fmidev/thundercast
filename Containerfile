@@ -8,16 +8,12 @@ RUN dnf -y install dnf-plugins-core && \
     dnf -y module enable python38 && \
     dnf config-manager --set-enabled powertools && \
     dnf config-manager --setopt="epel.exclude=eccodes*" --save && \
-    dnf -y --setopt=install_weak_deps=False install python38-pip eccodes git && \
+    dnf -y --setopt=install_weak_deps=False install python38-pip python38-devel eccodes git gcc  && \
     dnf -y clean all && rm -rf /var/cache/dnf
- # codeready-builder-for-rhel-8-x86_64-rpms && \
 
-RUN git clone https://github.com/fmidev/gridpp-runner.git
+RUN git clone https://github.com/fmidev/thundercast.git
 
-WORKDIR /gridpp-runner
+WORKDIR /thundercast
 
-ADD https://lake.fmi.fi/dem-data/DEM_100m-Int16.tif /gridpp-runner
-
-RUN chmod 644 DEM_100m-Int16.tif && \
-    update-alternatives --set python3 /usr/bin/python3.8 && \
+RUN update-alternatives --set python3 /usr/bin/python3.8 && \
     python3 -m pip --no-cache-dir install -r requirements.txt
