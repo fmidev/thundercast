@@ -1,0 +1,12 @@
+xarray
+pandas
+numpy
+eccodes
+gridpp
+pyproj
+fsspec
+requests
+scipy
+s3fs
+rasterio
+pysteps
