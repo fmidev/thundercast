@@ -95,7 +95,7 @@ def plot_contourf_map_scandinavia_array(data, obs_data, vmin, vmax, outfile, dat
     lons = obs_data.longitudes
     lats = obs_data.latitudes
     fig_date = w_time
-    for i in range(len(data[0])):
+    for i in range(len(data[0]) - 1):
         minute = 0
         if i > 0:
             minute = 15 * i

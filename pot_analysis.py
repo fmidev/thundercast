@@ -8,18 +8,20 @@ from file_utils import ReadData
 
 
 class Analysis:
-    def __init__(self, origin_file):
+    def __init__(self, origin_file, time_window):
         self.obs = None
         self.points = None
         self.output = None
         self.longitudes = None
         self.latitudes = None
+        self.template = None
         self.origin_file = origin_file
+        self.time_window = time_window
         self.generate_analysis_field()
 
     def generate_analysis_field(self):
-        # grid, lons, lats, background, analysistime, forecasttime
-        data = ReadData(self.origin_file, read_coordinates=True)
+        data = ReadData(self.origin_file, read_coordinates=True, use_as_template=True)
+        self.template = data.template
         self.generate_background_params(data)
         grid = self.read_grid(data)
         background = np.zeros(data.data[0].shape)
@@ -43,12 +45,13 @@ class Analysis:
                                obs["elevation"].to_numpy(),)
         return points, obs
 
-    def read_flash_obs(self, obstime, flash_time=None, timewindow=20):
+    def read_flash_obs(self, obstime, flash_time=None):
         timestr = obstime.strftime("%Y-%m-%dT%H:%M:%S")
-        start_time = obstime - pd.DateOffset(minutes=timewindow)
+        start_time = obstime - pd.DateOffset(minutes=self.time_window)
+        #TODO: Poista tämä ennen virallista tuotantoon laittoa
         if flash_time:
             timestr = flash_time.strftime("%Y-%m-%dT%H:%M:%S")
-            start_time = flash_time - pd.DateOffset(minutes=timewindow)
+            start_time = flash_time - pd.DateOffset(minutes=self.time_window)
         end_tstr = timestr
         start_tstr = start_time.strftime("%Y-%m-%dT%H:%M:%S")
         url = "http://smartmet.fmi.fi/timeseries?producer={}&tz=gmt&starttime={}&endtime={}&param=flash_id,longitude,latitude,utctime,altitude,peak_current&format=json".format(

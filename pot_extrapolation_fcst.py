@@ -1,14 +1,34 @@
+import argparse
 import tools as tl
-from file_utils import ReadData
+from file_utils import ReadData, WriteData
 from extrapolation_nwc import ExtrapolatedNWC
 from pot_analysis import Analysis
 from plotting import plot_contourf_map_scandinavia_array
 
 
-def main(wind_param: str, datetime_zero: str):
+def main():
+    """Probability of thunder nowcast a.k.a Thundercast
+
+    This program creates POT analysis field from observations and interpolates those
+    to model grid. Then calculates nowcast forecast using wind filed generated with Pysteps.
+    Creates 4h forecast with 15 min outputs. Grid resolution is same as input model
+    used for calculating wind fields.
+
+    Generates wind field for nowcasting with Pysteps library using model
+    precipitation rate simulations.
+    From rr takes latest forecasts 0h and 3 previous forecasts 0h model fields.
+    From observations pick up all lightning observations from select time window.
+    With longer time since observed, smaller probability will observation get.
+    Observations are then interpolated to  model grid using Gridpp library.
+
+    """
+    args = parse_command_line()
+    # Fetch input POT file from MNWC
+    #input_file = tl.fetch_input_file(args.param)
+    #TODO: Lisää datan haku suoraan S3:lta
+    initial_files = tl.fetch_wanted_date_files(args.wind_field_param, args.start_time)
     # create POT_0h analysis from observation.
-    initial_files = tl.fetch_wanted_date_files(wind_param, datetime_zero)
-    pot_data = Analysis(initial_files[-1])
+    pot_data = Analysis(args.input_file, args.obs_time_window)
     analysis_info = {}
     for i, data_file in enumerate(initial_files):
         data = ReadData(data_file)
@@ -25,23 +45,38 @@ def main(wind_param: str, datetime_zero: str):
     exrtapolated_fcst = ExtrapolatedNWC(analysis_data, masked_data,
                                         pot_data=pot_data.output)
     exrtapolated_fcst = tl.convert_nan_to_zeros(exrtapolated_fcst)
-    # Tässä kohtaa pitää ehkä tallettaa filuksi
-
+    WriteData(exrtapolated_fcst, pot_data.template, args.output, args.file_source)
 
     fig_out = f"/home/korpinen/Documents/STU_kehitys/ukkosen_tod/figures/"
     #plot_NWC_data(exrtapolated_fcst.data_f, 0.0, 1.0, fig_out, pot_date,
     #              nwc_data.time[-1], "Probability of thunder nwc 15min 1km", "nwc",
     #              wind=exrtapolated_fcst.V, lat=pot_data.latitudes, lon=pot_data.longitudes)
-    plot_contourf_map_scandinavia_array(exrtapolated_fcst.data_f, pot_data, 0, 100,
-                                        fig_out, pot_date, nwc_data.time[-1],
-                                        "Probability of thunder nwc 15min 1km",
-                                        wind=exrtapolated_fcst.V, analysis=True)
+    #plot_contourf_map_scandinavia_array(exrtapolated_fcst.data_f, pot_data, 0, 100,
+    #                                    fig_out, pot_date, nwc_data.time[-1],
+    #                                    "Probability of thunder nwc 15min 1km",
+    #                                    wind=exrtapolated_fcst.V, analysis=True)
+
+
+def parse_command_line():
+    #TODO: onko kaikki tarpeellisia antaa muuttujana?
+    parser = argparse.ArgumentParser(argument_default=None)
+    parser.add_argument("--start_time", action="store", type=str, required=True)
+    parser.add_argument("--pot_time", action="store", type=str, required=True)
+    parser.add_argument("--param", action="store", type=str, required=True)
+    parser.add_argument("--wind_field_param", action="store", type=str, required=True)
+    parser.add_argument("--obs_time_window", action="store", type=int, required=True)
+    parser.add_argument("--output", action="store", type=str, required=True)
+    parser.add_argument("--file_source", action="store", type=str, required=True)
+    parser.add_argument("--input_file", action="store", type=str, required=False)
+    parser.add_argument("--plot", action="store_true", default=False)
+    args = parser.parse_args()
+    return args
 
 
 if __name__ == '__main__':
-    param = "pot"
-    wind_param = "rprate"
-    pot_date = "202207131515"
-    rp_date = "202301161030"
-    main(wind_param, rp_date)
+    #param = "pot"
+    #wind_param = "rprate"
+    #pot_date = "202207131515"
+    #rp_date = "202301161030"
+    main()
 
