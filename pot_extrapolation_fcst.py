@@ -45,16 +45,6 @@ def main():
     exrtapolated_fcst = tl.convert_nan_to_zeros(exrtapolated_fcst)
     WriteData(exrtapolated_fcst, pot_data.template, args.output, args.file_source)
 
-    if args.plot == True:
-        import os
-        pwd = os.getcwd()
-        pwd = os.path.split(pwd)[0]
-        fig_out = f"{pwd}/figures/"
-        plot_contourf_map_scandinavia_array(exrtapolated_fcst.data_f, pot_data.output, 0, 100,
-                                            fig_out, args.pot_time, nwc_data.time[-1],
-                                            "Probability of thunder nwc 15min 1km",
-                                            wind=exrtapolated_fcst.V, analysis=True)
-
 
 def parse_command_line():
     #TODO: onko kaikki tarpeellisia antaa muuttujana?

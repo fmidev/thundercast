@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import xarray as xr
-from mpl_toolkits.basemap import Basemap
 import cartopy
 from datetime import datetime as dt
 from datetime import timedelta as td
@@ -9,6 +8,7 @@ import tools as tl
 
 
 def plot_imshow_map_scandinavia(grib_file, vmin, vmax, outfile, date, title):
+    from mpl_toolkits.basemap import Basemap
     """Use for plotting when projection is Polster/Polar_stereografic
 
     Only for Scandinavian domain. For other domains coordinates must be changed.
@@ -130,6 +130,7 @@ def plot_contourf_map_scandinavia_array(data, obs_data, vmin, vmax, outfile, dat
 
 def plot_NWC_data_imshow_polster(data, obs_data, vmin, vmax, outfile, date,
                                  w_time, title, type, wind=None):
+    from mpl_toolkits.basemap import Basemap
     cmap = 'Blues'  # RdBl_r  'Blues' 'Jet' 'RdYlGn_r'
     obs = obs_data.obs
     lons = obs['longitude']
