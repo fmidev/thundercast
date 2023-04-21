@@ -11,4 +11,3 @@ s3fs
 rasterio
 pysteps
 matplotlib
-cartopy
