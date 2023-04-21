@@ -10,4 +10,4 @@ scipy
 s3fs
 rasterio
 pysteps
-matplotlib
+opencv
