@@ -17,3 +17,5 @@ WORKDIR /thundercast
 
 RUN update-alternatives --set python3 /usr/bin/python3.8 && \
     python3 -m pip --no-cache-dir install -r requirements.txt
+
+RUN conda install opencv
