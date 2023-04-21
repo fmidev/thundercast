@@ -23,8 +23,6 @@ def main():
 
     """
     args = parse_command_line()
-    # Fetch input POT file from MNWC
-    #input_file = tl.fetch_input_file(args.param)
     #TODO: Lisää datan haku suoraan S3:lta
     initial_files = tl.fetch_wanted_date_files(args.wind_field_param, args.start_time)
     # create POT_0h analysis from observation.
@@ -47,14 +45,15 @@ def main():
     exrtapolated_fcst = tl.convert_nan_to_zeros(exrtapolated_fcst)
     WriteData(exrtapolated_fcst, pot_data.template, args.output, args.file_source)
 
-    fig_out = f"/home/korpinen/Documents/STU_kehitys/ukkosen_tod/figures/"
-    #plot_NWC_data(exrtapolated_fcst.data_f, 0.0, 1.0, fig_out, pot_date,
-    #              nwc_data.time[-1], "Probability of thunder nwc 15min 1km", "nwc",
-    #              wind=exrtapolated_fcst.V, lat=pot_data.latitudes, lon=pot_data.longitudes)
-    #plot_contourf_map_scandinavia_array(exrtapolated_fcst.data_f, pot_data, 0, 100,
-    #                                    fig_out, pot_date, nwc_data.time[-1],
-    #                                    "Probability of thunder nwc 15min 1km",
-    #                                    wind=exrtapolated_fcst.V, analysis=True)
+    if args.plot == True:
+        import os
+        pwd = os.getcwd()
+        pwd = os.path.split(pwd)[0]
+        fig_out = f"{pwd}/figures/"
+        plot_contourf_map_scandinavia_array(exrtapolated_fcst.data_f, pot_data.output, 0, 100,
+                                            fig_out, args.pot_time, nwc_data.time[-1],
+                                            "Probability of thunder nwc 15min 1km",
+                                            wind=exrtapolated_fcst.V, analysis=True)
 
 
 def parse_command_line():

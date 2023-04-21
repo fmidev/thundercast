@@ -52,8 +52,8 @@ def generate_nowcast_times(analysis_time: str, time_freq: int = 15, end_time: in
 def fetch_data_file(file_path: Union[str, None], file_date: str, param: str):
     if not file_path:
         pwd = os.getcwd()
-        pwd = os.path.split(pwd)[0]
-        file_path = f"{pwd}/data/{param}_data/NWC_15/{file_date}/"
+        #pwd = os.path.split(pwd)[0]
+        file_path = f"{pwd}/test_data/{param}/{file_date}/"
     data_file = os.listdir(file_path)
     return file_path + data_file[0]
 
