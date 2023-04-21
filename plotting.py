@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import xarray as xr
-import cartopy
 from datetime import datetime as dt
 from datetime import timedelta as td
 import tools as tl
@@ -43,6 +42,7 @@ def plot_contourf_map_scandinavia_file(grib_file, vmin, vmax, outfile, date,
 
     For xarray to work with grib-files, cfgrib must be installed
     """
+    import cartopy
     ds = xr.load_dataset(grib_file)
     lon, lat = tl.read_obs()
     fig_date = w_time
@@ -89,6 +89,7 @@ def plot_contourf_map_scandinavia_array(data, obs_data, vmin, vmax, outfile, dat
 
     For xarray to work with grib-files, cfgrib must be installed
     """
+    import cartopy
     obs = obs_data.obs
     lon = obs['longitude']
     lat = obs['latitude']
