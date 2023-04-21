@@ -10,5 +10,5 @@ scipy
 s3fs
 rasterio
 pysteps
-mpl_toolkits
+matplotlib
 cartopy
