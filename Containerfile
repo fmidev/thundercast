@@ -18,4 +18,6 @@ WORKDIR /thundercast
 RUN update-alternatives --set python3 /usr/bin/python3.8 && \
     python3 -m pip --no-cache-dir install -r requirements.txt
 
-RUN conda install opencv
+RUN dnf install --nogpgcheck https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-$(rpm -E %rhel).noarch.rpm -y && \
+    dnf install --nogpgcheck https://mirrors.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-$(rpm -E %rhel).noarch.rpm -y && \
+    dnf install ffmpeg -y
