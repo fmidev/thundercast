@@ -76,7 +76,6 @@ class Analysis:
         """Perform optimal interpolation"""
         # Interpolate background data to observation points
         pobs = gridpp.nearest(grid, self.points, background)
-        pobs = pobs.astype(np.float)
         structure = gridpp.BarnesStructure(10000, 200)
         max_points = 20
         obs_to_background_variance_ratio = np.full(self.points.size(), 0.01)
