@@ -1,8 +1,6 @@
 import gridpp
 import numpy as np
-import sys
 import requests
-import datetime
 import pandas as pd
 from file_utils import ReadData
 
@@ -27,8 +25,7 @@ class Analysis:
         background = np.zeros(data.data[0].shape)
         # Read observations from smartmet server
         print("Reading observation data")
-        flash_time = datetime.datetime(2022, 7, 13, 15, 15, 00)
-        self.points, self.obs = self.read_obs(data.forecast_time, flash_time)
+        self.points, self.obs = self.read_obs(data.forecast_time)
         self.output = self.interpolate(grid, background, 'flash')
 
     def read_grid(self, data):
@@ -37,28 +34,25 @@ class Analysis:
         grid = gridpp.Grid(data.latitudes, data.longitudes, topo)
         return grid
 
-    def read_obs(self, obstime, flash_time=None):
+    def read_obs(self, obstime):
         """Read observations from smartmet server"""
-        obs = self.read_flash_obs(obstime, flash_time)
+        obs = self.read_flash_obs(obstime)
         points = gridpp.Points(obs["latitude"].to_numpy(),
                                obs["longitude"].to_numpy(),
                                obs["elevation"].to_numpy(),)
         return points, obs
 
-    def read_flash_obs(self, obstime, flash_time=None):
+    def read_flash_obs(self, obstime):
         timestr = obstime.strftime("%Y-%m-%dT%H:%M:%S")
         start_time = obstime - pd.DateOffset(minutes=self.time_window)
-        #TODO: Poista tämä ennen virallista tuotantoon laittoa
-        if flash_time:
-            timestr = flash_time.strftime("%Y-%m-%dT%H:%M:%S")
-            start_time = flash_time - pd.DateOffset(minutes=self.time_window)
+        older_obs = start_time - pd.DateOffset(minutes=self.time_window)
         end_tstr = timestr
         start_tstr = start_time.strftime("%Y-%m-%dT%H:%M:%S")
+        older_tstr = older_obs.strftime("%Y-%m-%dT%H:%M:%S")
         url = "http://smartmet.fmi.fi/timeseries?producer={}&tz=gmt&starttime={}&endtime={}&param=flash_id,longitude,latitude,utctime,altitude,peak_current&format=json".format(
             "flash", start_tstr, end_tstr)
         resp = requests.get(url)
         trad_obs = resp.json()
-
         obs = pd.DataFrame(trad_obs)
         obs.rename(columns={"flash_id": "station_id",
                             "peak_current": "flash",
@@ -66,19 +60,33 @@ class Analysis:
         obs = obs.assign(flash=100.0)
         obs = obs.assign(elevation=0.0)
 
+        url_old = "http://smartmet.fmi.fi/timeseries?producer={}&tz=gmt&starttime={}&endtime={}&param=flash_id,longitude,latitude,utctime,altitude,peak_current&format=json".format(
+            "flash", older_tstr, start_tstr)
+        resp_old = requests.get(url_old)
+        trad_obs_old = resp_old.json()
+        obs_old = pd.DataFrame(trad_obs_old)
+        obs_old.rename(columns={"flash_id": "station_id",
+                            "peak_current": "flash",
+                            "altitude": "elevation"}, inplace=True)
+        obs_old = obs_old.assign(flash=40.0)
+        obs_old = obs_old.assign(elevation=0.0)
+        result = pd.concat([obs, obs_old])
+
         count = len(trad_obs)
+        count_old = len(trad_obs_old)
         if count == 0:
-            print("Unable to proceed")
-            sys.exit(1)
-        return obs
+            print("No near real time observations")
+            if count_old == 0:
+                print("No observations at all from select times")
+        return result
 
     def interpolate(self, grid, background, param):
         """Perform optimal interpolation"""
         # Interpolate background data to observation points
         pobs = gridpp.nearest(grid, self.points, background)
-        structure = gridpp.BarnesStructure(10000, 200)
+        structure = gridpp.BarnesStructure(5000, 200)
         max_points = 20
-        obs_to_background_variance_ratio = np.full(self.points.size(), 0.01)
+        obs_to_background_variance_ratio = np.full(self.points.size(), 0.1)
         print("Performing optimal interpolation")
         output = gridpp.optimal_interpolation(grid, background, self.points,
                                               self.obs[param].to_numpy(),

@@ -146,6 +146,7 @@ class WriteData:
         codes_set_long(self.template, "centre", 86)
         codes_set_long(self.template, "bitmapPresent", 1)
         codes_set_long(self.template, "indicatorOfUnitOfTimeRange", 0)  # minute
+        codes_set_long(self.template, "stepUnits", 1)  # minute
         base_lt = datetime.timedelta(minutes=15)
         pdtn = codes_get_long(self.template, "productDefinitionTemplateNumber")
         for i in range(self.interpolated_data.shape[0]):
@@ -173,5 +174,94 @@ class WriteData:
             codes_set_values(self.template, self.interpolated_data[i, :, :].flatten())
             codes_write(self.template, fp)
 
+        print("")
         codes_release(self.template)
         fp.close()
+
+
+class ReadDataPlotting:
+    def __init__(self, data_file: str,
+                added_hours: int = 0,
+                read_coordinates: bool = True,
+                use_as_template: bool = False):
+        self.data_file = data_file
+        self.mask_nodata = None
+        self.data = None
+        self.nodata = 9999
+        self.latitudes = None
+        self.longitudes = None
+        self.template = None
+        self.dtime = None
+        self.forecast_time = None
+        self.analysis_time = None
+        self.read(added_hours, read_coordinates, use_as_template)
+
+    def read(self, added_hours, read_coordinates, use_as_template):
+        print(f"Reading {self.data_file}")
+        if self.data_file.endswith(".grib2"):
+            self.read_grib(added_hours, read_coordinates, use_as_template)
+        else:
+            sys.exit("unsupported file type for file: %s" % (self.data_file))
+
+    def read_grib(self, added_hours, read_coordinates, use_as_template):
+        global GRIB_MESSAGE_STEP
+        start = time.time()
+
+        def read_leadtime(gh):
+            tr = codes_get_long(gh, "indicatorOfUnitOfTimeRange")
+            ft = codes_get_long(gh, "forecastTime")
+            if tr == 1:
+                return datetime.timedelta(hours=ft)
+            if tr == 0:
+                return datetime.timedelta(minutes=ft)
+            raise Exception("Unknown indicatorOfUnitOfTimeRange: {:%d}".format(tr))
+
+        data_ls = []
+        latitudes_ls = []
+        longitudes_ls = []
+        dtime_ls = []
+        wrk_data_file = self.data_file
+
+        if self.data_file.startswith("s3://"):
+            wrk_data_file = read_file_from_s3(self.data_file)
+
+        with open(wrk_data_file) as fp:
+            while True:
+                gh = codes_grib_new_from_file(fp)
+                if gh is None:
+                    break
+
+                ni = codes_get_long(gh, "Ni")
+                nj = codes_get_long(gh, "Nj")
+                data_date = codes_get_long(gh, "dataDate")
+                data_time = codes_get_long(gh, "dataTime")
+                lt = read_leadtime(gh)
+                self.analysis_time = datetime.datetime.strptime("{:d}/{:04d}".format(data_date, data_time), "%Y%m%d/%H%M")
+                self.forecast_time = datetime.datetime.strptime("{:d}/{:04d}".format(data_date, data_time), "%Y%m%d/%H%M") + lt
+                dtime_ls.append(self.forecast_time)
+                values = np.asarray(codes_get_values(gh))
+                data_ls.append(values.reshape(nj, ni))
+                if read_coordinates and len(dtime_ls) <= 1:
+                    latitudes_ls.append(np.asarray(codes_get_array(gh, "latitudes").reshape(nj, ni)))
+                    longitudes_ls.append(np.asarray(codes_get_array(gh, "longitudes").reshape(nj, ni)))
+
+                if use_as_template:
+                    self.template = codes_clone(gh)
+                    if GRIB_MESSAGE_STEP is None and lt > datetime.timedelta(minutes=0):
+                        GRIB_MESSAGE_STEP = lt
+                if codes_get_long(gh, "numberOfMissing") == ni*nj:
+                    print("File {} leadtime {} contains only missing data!".format(self.data_file, lt))
+                    sys.exit(1)
+                codes_release(gh)
+
+        self.data = np.asarray(data_ls)
+        if len(latitudes_ls) > 0:
+            self.latitudes = np.asarray(latitudes_ls)
+            self.longitudes = np.asarray(longitudes_ls)
+            self.latitudes = self.latitudes[0, :, :]
+            self.longitudes = self.longitudes[0, :, :]
+
+        self.mask_nodata = np.ma.masked_where(self.data == self.nodata, self.data)
+        if type(dtime_ls) == list:
+            self.dtime = [(i+datetime.timedelta(hours=added_hours)) for i in dtime_ls]
+        print("Read {} in {:.2f} seconds".format(self.data_file, time.time() - start))

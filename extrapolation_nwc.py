@@ -1,5 +1,6 @@
 import numpy as np
-from pysteps import motion, nowcasts
+from pysteps import nowcasts
+import tools as tl
 
 
 class ExtrapolatedNWC:
@@ -17,11 +18,7 @@ class ExtrapolatedNWC:
 
     def calculate_nwc(self):
         # Estimate the motion field with Lucas-Kanade
-        self.data[~np.isfinite(self.nodata)] = np.nan
-        self.data[self.data == 9999] = np.nan
-        oflow_method = motion.get_method("LK")
-        self.V = oflow_method(self.data[:3, :, :])
-
+        self.V = tl.calculate_wind_field(self.data, self.nodata)
         # Extrapolate the last radar observation
         extrapolate = nowcasts.get_method("extrapolation")
         if self.pot is not None:

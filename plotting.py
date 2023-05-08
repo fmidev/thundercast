@@ -1,145 +1,117 @@
+import os
 import numpy as np
+import argparse
 import matplotlib.pyplot as plt
 import xarray as xr
 from datetime import datetime as dt
 from datetime import timedelta as td
+from mpl_toolkits.basemap import Basemap
+import cartopy
+from file_utils import ReadDataPlotting, ReadData
 import tools as tl
 
 
-def plot_imshow_map_scandinavia(grib_file, vmin, vmax, outfile, date, title):
-    from mpl_toolkits.basemap import Basemap
-    """Use for plotting when projection is Polster/Polar_stereografic
+def main():
+    pwd = os.getcwd()
+    pwd = os.path.split(pwd)[0]
+    fig_out = f"{pwd}/POT_developing/figures/"
+    if os.path.isdir(fig_out) is False:
+        os.mkdir(fig_out)
 
-    Only for Scandinavian domain. For other domains coordinates must be changed.
-    For xarray to work with grib-files, cfgrib must be installed
-    """
-    ds = xr.load_dataset(grib_file)
-    cmap = 'RdYlGn_r' # RdBl_r  'Blues' 'Jet' 'RdYlGn_r'
-    for v in ds:
-        data = ds[v].data
-        lat_ts, lat0, lon0 = 52, 63, 19
-        for i in range(len(data)):
-            m = Basemap(width=1900000, height=2100000,
-                        resolution='l', projection='laea',
-                        lat_ts=lat_ts, lat_0=lat0, lon_0=lon0)
-            m.drawcountries(linewidth=1.0)
-            m.drawcoastlines(1.0)
-
-            d = data[i]
-            d[d <= 0.01] = np.nan
-            cm = m.imshow(d, cmap=cmap, vmin=vmin, vmax=vmax, origin="lower", zorder=1)
-            plt.title(f"{title}, {date} forecast {i}h")
-            plt.colorbar(cm, fraction=0.046, pad=0.04, orientation="horizontal")
-            idx = outfile.index("h.")
-            forecast_outfile = outfile[:idx] + f"{i}" + outfile[idx:]
-            plt.savefig(forecast_outfile, bbox_inches='tight', pad_inches=0.2, dpi=800)
-            plt.close()
-
-
-def plot_contourf_map_scandinavia_file(grib_file, vmin, vmax, outfile, date,
-                                       w_time, title, wind=None, analysis=False):
-    """Use for plotting when projection is Lambert etc.
-
-    For xarray to work with grib-files, cfgrib must be installed
-    """
-    import cartopy
-    ds = xr.load_dataset(grib_file)
-    lon, lat = tl.read_obs()
-    fig_date = w_time
-    for v in ds:
-        data = ds[v].data
-        lats, lons = ds['latitude'].data, ds['longitude'].data
-        lons[lons > 180] = lons[lons > 180] - 360
-        proj = cartopy.crs.LambertConformal(central_latitude=int(np.mean(lats)),
-                                            central_longitude=int(np.mean(lons)),
-                                            standard_parallels=(25, 25))
-        for i in range(len(data)):
-            minute = 0
-            if i > 0:
-                minute = 15 * i
-                fig_date = fig_date + td(minutes=int(15))
-            d = data[i]
-            ax = generate_fig(proj)
+    args = parse_command_line()
+    wind = None
+    if args.analysis is True:
+        analysis_info = {}
+        initial_files = [args.rprate_3_file,
+                         args.rprate_2_file,
+                         args.rprate_1_file]
+        for i, data_file in enumerate(initial_files):
+            data = ReadData(data_file)
+            data_0h, mask_data_0h, time_0h = tl.pick_analysis_data_from_array(data)
             if i == 0:
-                ax = generate_fig(proj)
-                cm = ax.pcolormesh(lons, lats, d, transform=cartopy.crs.PlateCarree(),
-                                   shading='auto', vmin=vmin, vmax=vmax, cmap='Blues')
-                if analysis:
-                    ax.scatter(lon, lat, zorder=1, alpha=0.1, c='r', s=5,
-                               transform=cartopy.crs.PlateCarree())
-                if wind is not None:
-                    ax.quiver(lons[::100, ::100], lats[::100, ::100], wind[0][::100, ::100],
-                              wind[-1][::100, ::100], transform=cartopy.crs.PlateCarree())
+                analysis_info = {"data": [data_0h], "mask": [mask_data_0h], "time": [time_0h]}
             else:
-                cm = ax.pcolormesh(lons, lats, d, transform=cartopy.crs.PlateCarree(),
-                                   shading='auto', vmin=vmin, vmax=vmax, cmap='Blues')
-                if wind is not None:
-                    ax.quiver(lons[::100, ::100], lats[::100, ::100], wind[0][::100, ::100],
-                              wind[-1][::100, ::100], transform=cartopy.crs.PlateCarree())
-            plt.title(f"{title} {dt.strftime(fig_date, '%Y-%m-%d %H:%M')}, "
-                      f"(POT date: {dt.strptime(date, '%Y%m%d%H%M').strftime('%Y-%m-%d %H:%M')} + {minute}min)")
-            plt.colorbar(cm, fraction=0.046, pad=0.04, orientation="horizontal")
-            forecast_outfile = outfile + f"{type}_pot_{i}min_{dt.strftime(fig_date, '%Y%m%d%H%M')}.png"
-            save_fig(ax, title, date, forecast_outfile)
+                analysis_info["data"].append(data_0h)
+                analysis_info["mask"].append(mask_data_0h)
+            nwc_data = tl.generate_nowcast_array(analysis_info)
+            wind = tl.calculate_wind_field(nwc_data.data, nwc_data.mask)
+            flash_obs = tl.read_flash_obs(args.analysis_time, args.obs_time_window)
+    plot_contourf_map_scandinavia(args.data_file, fig_out, "Probability of thunder nwc 15min 1km",
+                                  obs=flash_obs, wind=wind)
 
 
-def plot_contourf_map_scandinavia_array(data, obs_data, vmin, vmax, outfile, date,
-                                        w_time, title, wind=None, analysis=False):
+def parse_command_line():
+    parser = argparse.ArgumentParser(argument_default=None)
+    parser.add_argument("--data_file", action="store", type=str, required=True)
+    parser.add_argument("--obs_time_window", action="store", type=int, required=True)
+    parser.add_argument("--analysis", action="store_true", default=False)
+    parser.add_argument("--analysis_time", action="store", type=str, required=False)
+    parser.add_argument("--rprate_1_file", action="store", type=str, required=False)
+    parser.add_argument("--rprate_2_file", action="store", type=str, required=False)
+    parser.add_argument("--rprate_3_file", action="store", type=str, required=False)
+    args = parser.parse_args()
+    return args
+
+
+def plot_contourf_map_scandinavia(data, outfile, title, obs=None,
+                                       wind=None, vmin=0, vmax=100):
     """Use for plotting when projection is Lambert etc.
 
     For xarray to work with grib-files, cfgrib must be installed
     """
-    import cartopy
-    obs = obs_data.obs
-    lon = obs['longitude']
-    lat = obs['latitude']
-    lons = obs_data.longitudes
-    lats = obs_data.latitudes
-    fig_date = w_time
-    for i in range(len(data[0]) - 1):
+    if isinstance(data, str):
+        data = ReadDataPlotting(data)
+    lon = data.longitudes
+    lat = data.latitudes
+    fig_date = data.analysis_time
+    for i, data_field in enumerate(data.data):
         minute = 0
         if i > 0:
             minute = 15 * i
             fig_date = fig_date + td(minutes=int(15))
-        d = data[i]
-        lons[lons > 180] = lons[lons > 180] - 360
-        proj = cartopy.crs.LambertConformal(central_latitude=int(np.mean(lats)),
-                                            central_longitude=int(np.mean(lons)),
+        lon[lon > 180] = lon[lon > 180] - 360
+        proj = cartopy.crs.LambertConformal(central_latitude=int(np.mean(lat)),
+                                            central_longitude=int(np.mean(lon)),
                                             standard_parallels=(25, 25))
         ax = generate_fig(proj)
         if i == 0:
-            cm = ax.pcolormesh(lons, lats, d, transform=cartopy.crs.PlateCarree(),
+            cm = ax.pcolormesh(lon, lat, data_field, transform=cartopy.crs.PlateCarree(),
                                shading='auto', vmin=vmin, vmax=vmax, cmap='Blues')
-            if analysis:
-                ax.scatter(lon, lat, zorder=1, alpha=0.1, c='r', s=5,
+            if obs is not None:
+                lons = obs['longitude']
+                lats = obs['latitude']
+                ax.scatter(lons, lats, zorder=1, alpha=0.1, c='r', s=5,
                            transform=cartopy.crs.PlateCarree())
             if wind is not None:
-                ax.quiver(lons[::100, ::100], lats[::100, ::100], wind[0][::100, ::100],
+                ax.quiver(lon[::100, ::100], lat[::100, ::100], wind[0][::100, ::100],
                           wind[-1][::100, ::100], transform=cartopy.crs.PlateCarree())
         else:
-            cm = ax.pcolormesh(lons, lats, d, transform=cartopy.crs.PlateCarree(),
+            cm = ax.pcolormesh(lon, lat, data_field, transform=cartopy.crs.PlateCarree(),
                                shading='auto', vmin=vmin, vmax=vmax, cmap='Blues')
             if wind is not None:
-                ax.quiver(lons[::100, ::100], lats[::100, ::100], wind[0][::100, ::100],
+                ax.quiver(lon[::100, ::100], lat[::100, ::100], wind[0][::100, ::100],
                           wind[-1][::100, ::100], transform=cartopy.crs.PlateCarree())
-        plt.title(f"{title} {dt.strftime(fig_date, '%Y-%m-%d %H:%M')}, "
-                  f"(POT date: {dt.strptime(date, '%Y%m%d%H%M').strftime('%Y-%m-%d %H:%M')} + {minute}min)")
+        plt.title(f"{title} {dt.strftime(fig_date, '%Y-%m-%d %H:%M')},\n Analysistime {data.analysis_time}, forecast + {minute}min)")
         plt.colorbar(cm, fraction=0.046, pad=0.04, orientation="horizontal")
-        forecast_outfile = outfile + f"nwc_pot_{i}_{dt.strftime(fig_date, '%Y%m%d%H%M')}.png"
-        save_fig(ax, title, date, cm, forecast_outfile)
+        forecast_outfile = outfile + f"POT_{i}_{dt.strftime(data.analysis_time, '%Y%m%d%H%M')}+{i*15}min.png"
+        plt.savefig(forecast_outfile, bbox_inches='tight', pad_inches=0.2, dpi=300)
+        plt.close()
+        print(f"Done plotting fig {i+1}/17)")
 
 
-def plot_NWC_data_imshow_polster(data, obs_data, vmin, vmax, outfile, date,
-                                 w_time, title, type, wind=None):
-    from mpl_toolkits.basemap import Basemap
+def plot_NWC_data_imshow_polster(data, outfile, title, obs=None,
+                                       wind=None, vmin=0, vmax=100):
+    """Use for plotting when projection is Polster/Polar_stereografic
+
+    Only for Scandinavian domain. For other domains coordinates must be changed.
+    """
+    if isinstance(data, str):
+        data = ReadDataPlotting(data)
     cmap = 'Blues'  # RdBl_r  'Blues' 'Jet' 'RdYlGn_r'
-    obs = obs_data.obs
-    lons = obs['longitude']
-    lats = obs['latitude']
-    lon = obs_data.longitudes
-    lat = obs_data.latitudes
-    fig_date = w_time
-    for i in range(len(data)):
+    lon = data.longitudes
+    lat = data.latitudes
+    fig_date = data.analysis_time
+    for i in range(len(data.data)):
         minute = 0
         fig, ax = plt.subplots(1, 1, figsize=(16, 12))
         if i > 0:
@@ -152,18 +124,20 @@ def plot_NWC_data_imshow_polster(data, obs_data, vmin, vmax, outfile, date,
                     lat_1=63.3, lat_2=63.3, lat_0=63.3, lon_0=20.0, ax=ax)
         m.drawcountries(linewidth=1.0)
         m.drawcoastlines(1.0)
-        d = data[i, :, :]
+        d = data.data[i, :, :]
         x, y = m(lon, lat)
         cm = m.pcolormesh(x, y, d, cmap=cmap, vmin=vmin, vmax=vmax)
-        m.quiver(lon[::100, ::100], lat[::100, ::100], wind[0][::100, ::100],
-                 wind[-1][::100, ::100], latlon=True)
-        if i == 0:
+        if wind is not None:
+            m.quiver(lon[::100, ::100], lat[::100, ::100], wind[0][::100, ::100],
+                     wind[-1][::100, ::100], latlon=True)
+        if i == 0 and obs is not None:
+            lons = obs['longitude']
+            lats = obs['latitude']
             m.scatter(lons, lats, zorder=1, alpha=0.2, c='r', s=10, latlon=True)
-        plt.title(f"{title} {dt.strftime(fig_date, '%Y-%m-%d %H:%M')}, "
-                  f"(POT date: {dt.strptime(date, '%Y%m%d%H%M').strftime('%Y-%m-%d %H:%M')} + {minute}min)")
+        plt.title(f"{title} {dt.strftime(fig_date, '%Y-%m-%d %H:%M')},\n Analysistime {data.analysis_time}, forecast + {minute}min)")
         plt.colorbar(cm, fraction=0.046, pad=0.04, orientation="horizontal")
-        forecast_outfile = outfile + f"{type}_pot_{i}h_{dt.strftime(fig_date, '%Y%m%d%H%M')}.png"
-        plt.savefig(forecast_outfile, dpi=800, bbox_inches='tight', pad_inches=0.2)
+        forecast_outfile = outfile + f"POT_{i}_{dt.strftime(data.analysis_time, '%Y%m%d%H%M')}+{minute}min.png"
+        plt.savefig(forecast_outfile, dpi=300, bbox_inches='tight', pad_inches=0.2)
         plt.close()
 
 
@@ -178,8 +152,5 @@ def generate_fig(proj):
     return ax
 
 
-def save_fig(ax, title, date, outfile):
-    plt.title(f"{title}, {date} forecast")
-    forecast_outfile = outfile + f"{title}.png"
-    plt.savefig(forecast_outfile, bbox_inches='tight', pad_inches=0.2, dpi=800)
-    plt.close()
+if __name__ == '__main__':
+    main()

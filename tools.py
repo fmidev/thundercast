@@ -1,3 +1,4 @@
+import datetime
 import os
 import numpy as np
 import numpy.ma as ma
@@ -7,6 +8,8 @@ from datetime import datetime as dt
 from datetime import timedelta as td
 import pandas as pd
 import fsspec
+import requests
+from pysteps import motion
 
 
 @dataclass
@@ -31,31 +34,42 @@ def pick_files_by_datetime(files: list, datetime_zero: str):
     return initial_files
 
 
-def fetch_wanted_date_files(param: str, datetime_zero: str, path: Union[str, None] = None):
+def fetch_wanted_date_files(param: str, path: Union[str, None] = None):
     initial_files = []
-    nwc_times = generate_nowcast_times(datetime_zero)
+    nwc_times = generate_nowcast_times()
     for nwc_t in nwc_times:
         initial_files.append(fetch_data_file(path, nwc_t, param))
     return initial_files
 
 
-def generate_nowcast_times(analysis_time: str, time_freq: int = 15, end_time: int = 60):
-    nowcast_times_str = [analysis_time]
-    analysis_datetime = dt.strptime(analysis_time, '%Y%m%d%H%M')
+def generate_nowcast_times(time_freq: int = 15, end_time: int = 60):
+    near_real_time = round_current_time_in_quarter()
+    nowcast_times_str = [near_real_time]
+    analysis_datetime = dt.strptime(near_real_time, '%Y%m%d%H%M')
     for x in np.arange(time_freq, end_time, time_freq):
         nwc_datetime = analysis_datetime - td(minutes=int(x))
         nowcast_times_str.append(dt.strftime(nwc_datetime, '%Y%m%d%H%M'))
     nowcast_times_str.sort()
     return nowcast_times_str
 
-# TODO: poisto kovakoodaukset
-def fetch_data_file(file_path: Union[str, None], file_date: str, param: str):
+
+def fetch_data_file(file_path: Union[str, None], nwc_time: str, param: str):
+    param_file = ""
     if not file_path:
-        pwd = os.getcwd()
-        #pwd = os.path.split(pwd)[0]
-        file_path = f"{pwd}/test_data/{param}/{file_date}/"
-    data_file = os.listdir(file_path)
-    return file_path + data_file[0]
+        if param == 'rprate':
+            param_file = 'interpolated_rprate.grib2'
+        file_path = f"s3://routines-data.lake.fmi.fi/hrnwc/development/{nwc_time}/{param_file}"
+    return file_path
+
+
+def round_current_time_in_quarter():
+    def round_dt(time):
+        delta = time.minute % 15
+        time = dt(time.year, time.month, time.day, time.hour, time.minute - delta)
+        return time - td(minutes=30)
+    now = dt.utcnow()
+    now = round_dt(now)
+    return now.strftime("%Y%m%d%H%M")
 
 
 def pick_analysis_data_from_array(data_object):
@@ -74,9 +88,17 @@ def convert_nan_to_zeros(data):
     return data
 
 
+def calculate_wind_field(data, nodata):
+    data[~np.isfinite(nodata)] = np.nan
+    data[data == 9999] = np.nan
+    oflow_method = motion.get_method("LK")
+    V = oflow_method(data[:3, :, :])
+    return V
+
+
 def read_file_from_s3(data_file):
     uri = "simplecache::{}".format(data_file)
-    return fsspec.open_local(uri, s3={'anon': True, 'client_kwargs': {'endpoint_url': 'https://lake.fmi.fi'}})
+    return fsspec.open_local(uri, s3={'anon': True, 'client_kwargs': {'endpoint_url': 'https://routines-data.lake.fmi.fi'}})
 
 
 def read_flash_txt_to_array(file_path):
@@ -84,9 +106,46 @@ def read_flash_txt_to_array(file_path):
     return lines
 
 
-# TODO: Siivoa pois virallisesta versiosta
-def read_obs():
-    """Read observations from smartmet server"""
-    flash_file = f'/home/korpinen/Documents/STU_kehitys/ukkosen_tod/data/flash_data/202207131515_flashObs.txt'
-    flash_data = read_flash_txt_to_array(flash_file)
-    return flash_data["longitude"], flash_data["latitude"]
+def read_flash_obs(obstime, time_window):
+    flash = datetime.datetime(2022, 7, 13, 15, 15, 00)
+    obstime = datetime.datetime.strptime(obstime, "%Y%m%d%H%M")
+    timestr = obstime.strftime("%Y-%m-%dT%H:%M:%S")
+    start_time = obstime - pd.DateOffset(minutes=time_window)
+    older_obs = start_time - pd.DateOffset(minutes=time_window)
+    if flash:
+        timestr = flash.strftime("%Y-%m-%dT%H:%M:%S")
+        start_time = flash - pd.DateOffset(minutes=time_window)
+        older_obs = start_time - pd.DateOffset(minutes=time_window - 1)
+    end_tstr = timestr
+    start_tstr = start_time.strftime("%Y-%m-%dT%H:%M:%S")
+    older_tstr = older_obs.strftime("%Y-%m-%dT%H:%M:%S")
+    url = "http://smartmet.fmi.fi/timeseries?producer={}&tz=gmt&starttime={}&endtime={}&param=flash_id,longitude,latitude,utctime,altitude,peak_current&format=json".format(
+        "flash", start_tstr, end_tstr)
+    resp = requests.get(url)
+    trad_obs = resp.json()
+    obs = pd.DataFrame(trad_obs)
+    obs.rename(columns={"flash_id": "station_id",
+                        "peak_current": "flash",
+                        "altitude": "elevation"}, inplace=True)
+    obs = obs.assign(flash=100.0)
+    obs = obs.assign(elevation=0.0)
+
+    url_old = "http://smartmet.fmi.fi/timeseries?producer={}&tz=gmt&starttime={}&endtime={}&param=flash_id,longitude,latitude,utctime,altitude,peak_current&format=json".format(
+        "flash", older_tstr, start_tstr)
+    resp_old = requests.get(url_old)
+    trad_obs_old = resp_old.json()
+    obs_old = pd.DataFrame(trad_obs_old)
+    obs_old.rename(columns={"flash_id": "station_id",
+                        "peak_current": "flash",
+                        "altitude": "elevation"}, inplace=True)
+    obs_old = obs_old.assign(flash=40.0)
+    obs_old = obs_old.assign(elevation=0.0)
+    result = pd.concat([obs, obs_old])
+
+    count = len(trad_obs)
+    count_old = len(trad_obs_old)
+    if count == 0:
+        print("No near real time observations")
+        if count_old == 0:
+            print("No observations at all from select times")
+    return result
