@@ -85,8 +85,8 @@ class Analysis:
         count_old = len(trad_obs_old)
         if count == 0:
             print("No near real time observations")
-            if count_old == 0:
-                print("No observations at all from select times")
+        if count_old == 0:
+            print("No observations at all from select times")
         return result
 
     def interpolate(self, grid, background, param):
