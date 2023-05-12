@@ -2,11 +2,12 @@ import gridpp
 import numpy as np
 import requests
 import pandas as pd
+from datetime import datetime as dt
 from file_utils import ReadData
 
 
 class Analysis:
-    def __init__(self, origin_file, time_window):
+    def __init__(self, origin_file, obs_time, time_window):
         self.obs = None
         self.points = None
         self.output = None
@@ -14,6 +15,7 @@ class Analysis:
         self.latitudes = None
         self.template = None
         self.origin_file = origin_file
+        self.obs_time = obs_time
         self.time_window = time_window
         self.generate_analysis_field()
 
@@ -25,7 +27,7 @@ class Analysis:
         background = np.zeros(data.data[0].shape)
         # Read observations from smartmet server
         print("Reading observation data")
-        self.points, self.obs = self.read_obs(data.forecast_time)
+        self.points, self.obs = self.read_obs()
         self.output = self.interpolate(grid, background, 'flash')
 
     def read_grid(self, data):
@@ -34,17 +36,18 @@ class Analysis:
         grid = gridpp.Grid(data.latitudes, data.longitudes, topo)
         return grid
 
-    def read_obs(self, obstime):
+    def read_obs(self):
         """Read observations from smartmet server"""
-        obs = self.read_flash_obs(obstime)
+        obs = self.read_flash_obs()
         points = gridpp.Points(obs["latitude"].to_numpy(),
                                obs["longitude"].to_numpy(),
                                obs["elevation"].to_numpy(),)
         return points, obs
 
-    def read_flash_obs(self, obstime):
-        timestr = obstime.strftime("%Y-%m-%dT%H:%M:%S")
-        start_time = obstime - pd.DateOffset(minutes=self.time_window)
+    def read_flash_obs(self):
+        analysis_time = dt.strptime(self.obs_time, '%Y%m%d%H%M')
+        timestr = analysis_time.strftime("%Y-%m-%dT%H:%M:%S")
+        start_time = analysis_time - pd.DateOffset(minutes=self.time_window)
         older_obs = start_time - pd.DateOffset(minutes=self.time_window)
         end_tstr = timestr
         start_tstr = start_time.strftime("%Y-%m-%dT%H:%M:%S")
@@ -57,6 +60,9 @@ class Analysis:
         obs.rename(columns={"flash_id": "station_id",
                             "peak_current": "flash",
                             "altitude": "elevation"}, inplace=True)
+        if len(obs) == 0:
+            obs = obs.assign(latitude=np.nan)
+            obs = obs.assign(longitude=np.nan)
         obs = obs.assign(flash=100.0)
         obs = obs.assign(elevation=0.0)
 
@@ -68,6 +74,9 @@ class Analysis:
         obs_old.rename(columns={"flash_id": "station_id",
                             "peak_current": "flash",
                             "altitude": "elevation"}, inplace=True)
+        if len(obs_old) == 0:
+            obs_old = obs_old.assign(latitude=np.nan)
+            obs_old = obs_old.assign(longitude=np.nan)
         obs_old = obs_old.assign(flash=40.0)
         obs_old = obs_old.assign(elevation=0.0)
         result = pd.concat([obs, obs_old])
@@ -84,7 +93,7 @@ class Analysis:
         """Perform optimal interpolation"""
         # Interpolate background data to observation points
         pobs = gridpp.nearest(grid, self.points, background)
-        structure = gridpp.BarnesStructure(5000, 200)
+        structure = gridpp.BarnesStructure(20500, 200)
         max_points = 20
         obs_to_background_variance_ratio = np.full(self.points.size(), 0.1)
         print("Performing optimal interpolation")
@@ -93,7 +102,7 @@ class Analysis:
                                               obs_to_background_variance_ratio,
                                               pobs, structure, max_points,)
         output[output > 100] = 100
-        output[output < 10] = 10
+        output[output < 10] = 0
         return output
     
     def generate_background_params(self, data):

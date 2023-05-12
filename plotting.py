@@ -2,7 +2,6 @@ import os
 import numpy as np
 import argparse
 import matplotlib.pyplot as plt
-import xarray as xr
 from datetime import datetime as dt
 from datetime import timedelta as td
 from mpl_toolkits.basemap import Basemap
@@ -20,6 +19,7 @@ def main():
 
     args = parse_command_line()
     wind = None
+    flash_obs = None
     if args.analysis is True:
         analysis_info = {}
         initial_files = [args.rprate_3_file,
@@ -33,9 +33,9 @@ def main():
             else:
                 analysis_info["data"].append(data_0h)
                 analysis_info["mask"].append(mask_data_0h)
-            nwc_data = tl.generate_nowcast_array(analysis_info)
-            wind = tl.calculate_wind_field(nwc_data.data, nwc_data.mask)
-            flash_obs = tl.read_flash_obs(args.analysis_time, args.obs_time_window)
+        nwc_data = tl.generate_nowcast_array(analysis_info)
+        wind = tl.calculate_wind_field(nwc_data.data, nwc_data.mask)
+        flash_obs = tl.read_flash_obs(args.analysis_time, args.obs_time_window)
     plot_contourf_map_scandinavia(args.data_file, fig_out, "Probability of thunder nwc 15min 1km",
                                   obs=flash_obs, wind=wind)
 
@@ -80,7 +80,7 @@ def plot_contourf_map_scandinavia(data, outfile, title, obs=None,
             if obs is not None:
                 lons = obs['longitude']
                 lats = obs['latitude']
-                ax.scatter(lons, lats, zorder=1, alpha=0.1, c='r', s=5,
+                ax.scatter(lons, lats, zorder=1, alpha=0.3, c='r', s=3,
                            transform=cartopy.crs.PlateCarree())
             if wind is not None:
                 ax.quiver(lon[::100, ::100], lat[::100, ::100], wind[0][::100, ::100],

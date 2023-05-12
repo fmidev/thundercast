@@ -107,15 +107,10 @@ def read_flash_txt_to_array(file_path):
 
 
 def read_flash_obs(obstime, time_window):
-    flash = datetime.datetime(2022, 7, 13, 15, 15, 00)
     obstime = datetime.datetime.strptime(obstime, "%Y%m%d%H%M")
     timestr = obstime.strftime("%Y-%m-%dT%H:%M:%S")
     start_time = obstime - pd.DateOffset(minutes=time_window)
     older_obs = start_time - pd.DateOffset(minutes=time_window)
-    if flash:
-        timestr = flash.strftime("%Y-%m-%dT%H:%M:%S")
-        start_time = flash - pd.DateOffset(minutes=time_window)
-        older_obs = start_time - pd.DateOffset(minutes=time_window - 1)
     end_tstr = timestr
     start_tstr = start_time.strftime("%Y-%m-%dT%H:%M:%S")
     older_tstr = older_obs.strftime("%Y-%m-%dT%H:%M:%S")
@@ -127,6 +122,9 @@ def read_flash_obs(obstime, time_window):
     obs.rename(columns={"flash_id": "station_id",
                         "peak_current": "flash",
                         "altitude": "elevation"}, inplace=True)
+    if len(obs) == 0:
+        obs = obs.assign(latitude=np.nan)
+        obs = obs.assign(longitude=np.nan)
     obs = obs.assign(flash=100.0)
     obs = obs.assign(elevation=0.0)
 
@@ -138,6 +136,9 @@ def read_flash_obs(obstime, time_window):
     obs_old.rename(columns={"flash_id": "station_id",
                         "peak_current": "flash",
                         "altitude": "elevation"}, inplace=True)
+    if len(obs_old) == 0:
+        obs_old = obs_old.assign(latitude=np.nan)
+        obs_old = obs_old.assign(longitude=np.nan)
     obs_old = obs_old.assign(flash=40.0)
     obs_old = obs_old.assign(elevation=0.0)
     result = pd.concat([obs, obs_old])

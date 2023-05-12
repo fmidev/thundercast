@@ -6,6 +6,7 @@ import numpy as np
 import os
 import fsspec
 from tools import read_file_from_s3
+import gc
 
 GRIB_MESSAGE_STEP = None
 
@@ -89,6 +90,7 @@ class ReadData:
                     fp.close()
                     del fp
                     del gh
+                    gc.collect()
                     break
 
         self.data = np.asarray(data_ls)
@@ -229,6 +231,10 @@ class ReadDataPlotting:
             while True:
                 gh = codes_grib_new_from_file(fp)
                 if gh is None:
+                    fp.close()
+                    del fp
+                    del gh
+                    gc.collect()
                     break
 
                 ni = codes_get_long(gh, "Ni")

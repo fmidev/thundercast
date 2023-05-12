@@ -29,7 +29,7 @@ def main():
                      args.rprate_0_file]
 
     # create POT_0h analysis grid from observation.
-    pot_data = Analysis(args.mnwc_tstm_file, args.obs_time_window)
+    pot_data = Analysis(args.mnwc_tstm_file, args.start_time, args.obs_time_window)
     analysis_info = {}
     for i, data_file in enumerate(initial_files):
         data = ReadData(data_file)

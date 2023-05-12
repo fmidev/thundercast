@@ -2,13 +2,13 @@
 # Run script for Potential of thunder nowcasting forecasting
 
 PYTHON=python3
-START_TIME=202305090430
-FILE0=s3://hrnwc/development/202305090430/interpolated_rprate.grib2
-FILE1=s3://hrnwc/development/202305090415/interpolated_rprate.grib2
-FILE2=s3://hrnwc/development/202305090400/interpolated_rprate.grib2
-FILE3=s3://hrnwc/development/202305090345/interpolated_rprate.grib2
-SOURCE_FILE=s3://hrnwc/development/202305090430/mnwc_tstm.grib2
-OUTPUT=s3://hrnwc/development/202305090430/pot.grib2
+START_TIME=202305090600
+FILE0=s3://hrnwc/development/202305090600/interpolated_rprate.grib2
+FILE1=s3://hrnwc/development/202305090545/interpolated_rprate.grib2
+FILE2=s3://hrnwc/development/202305090530/interpolated_rprate.grib2
+FILE3=s3://hrnwc/development/202305090515/interpolated_rprate.grib2
+SOURCE_FILE=s3://hrnwc/development/202305090500/mnwc_tstm.grib2
+OUTPUT=/test_data/202305090600_pot.grib2
 
 #Generating nowcasted forecast for potential of thunder
 $PYTHON ./pot_extrapolation_fcst.py --start_time $START_TIME --wind_field_param rprate --obs_time_window 20 --output $OUTPUT --file_source s3 --rprate_0_file $FILE0 --rprate_1_file $FILE1 --rprate_2_file $FILE2 --rprate_3_file $FILE3 --mnwc_tstm_file $SOURCE_FILE
@@ -24,11 +24,11 @@ $PYTHON ./pot_extrapolation_fcst.py --start_time $START_TIME --wind_field_param 
 --obs_time_window 20
 --output s3://hrnwc/development/202305021430/pot.grib2
 --file_source s3
---rprate_0_file s3://hrnwc/development/202305021430/interpolated_rprate.grib2
---rprate_1_file s3://hrnwc/development/202305021415/interpolated_rprate.grib2
---rprate_2_file s3://hrnwc/development/202305021400/interpolated_rprate.grib2
---rprate_3_file s3://hrnwc/development/202305021345/interpolated_rprate.grib2
---mnwc_tstm_file s3://hrnwc/development/202305021430/mnwc_tstm.grib2
+--rprate_0_file s3://hrnwc/development/202305090600/interpolated_rprate.grib2
+--rprate_1_file s3://hrnwc/development/202305090545/interpolated_rprate.grib2
+--rprate_2_file s3://hrnwc/development/202305090530/interpolated_rprate.grib2
+--rprate_3_file s3://hrnwc/development/202305090515/interpolated_rprate.grib2
+--mnwc_tstm_file s3://hrnwc/development/202305090500/mnwc_tstm.grib2
 
 #Plotting run S3
 --data_file s3://hrnwc/development/202305021430/pot.grib2
