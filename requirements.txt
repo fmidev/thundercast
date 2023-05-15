@@ -11,3 +11,6 @@ s3fs
 rasterio
 pysteps
 opencv-python
+cartopy
+Basemap
+urllib3
