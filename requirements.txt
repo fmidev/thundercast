@@ -11,4 +11,4 @@ s3fs
 rasterio
 pysteps
 opencv-python
-urllib3
+urllib3<=1.26.15
