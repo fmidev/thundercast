@@ -31,7 +31,7 @@ SOURCE_FILE=s3://hrnwc/development/$MINUS60/mnwc_tstm.grib2
 OUTPUT="$PWD"/test_data/"$START_TIME"_pot.grib2
 
 #Generating nowcasted forecast for potential of thunder
-$PYTHON ./pot_extrapolation_fcst.py --start_time $START_TIME --wind_field_param rprate --obs_time_window 20 --output $OUTPUT --file_source s3 --rprate_0_file $FILE0 --rprate_1_file $FILE1 --rprate_2_file $FILE2 --rprate_3_file $FILE3 --mnwc_tstm_file $SOURCE_FILE
+$PYTHON ./generate_propability_of_thunder.py --start_time $START_TIME --wind_field_param rprate --obs_time_window 20 --output $OUTPUT --file_source s3 --rprate_0_file $FILE0 --rprate_1_file $FILE1 --rprate_2_file $FILE2 --rprate_3_file $FILE3 --mnwc_tstm_file $SOURCE_FILE
 
 # Generating visualizations for each forecasted timesteps
 #$PYTHON ./plotting.py --data_file $OUTPUT --analysis --analysis_time $START_TIME --rprate_1_file $FILE1 --rprate_2_file $FILE2 --rprate_3_file $FILE3

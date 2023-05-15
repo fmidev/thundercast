@@ -1,9 +1,8 @@
-import os
 import argparse
 import tools as tl
 from file_utils import ReadData, WriteData
-from extrapolation_nwc import ExtrapolatedNWC
-from pot_analysis import Analysis
+from nwc_extrapolation import ExtrapolatedNWC
+from flash_analysis import Analysis
 
 
 def main():
