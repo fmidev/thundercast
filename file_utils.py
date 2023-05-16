@@ -126,7 +126,7 @@ class WriteData:
                     "anon": False,
                     "key": os.environ["S3_ACCESS_KEY_ID"],
                     "secret": os.environ["S3_SECRET_ACCESS_KEY"],
-                    "client_kwargs": {"endpoint_url": "https://lake.fmi.fi"},
+                    "client_kwargs": {"endpoint_url": "https://routines-data.lake.fmi.fi"},
                 },
             )
             with openfile as fpout:
