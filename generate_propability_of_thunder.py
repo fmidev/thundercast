@@ -45,7 +45,7 @@ def main():
     exrtapolated_fcst = ExtrapolatedNWC(analysis_data, masked_data,
                                         pot_data=pot_data.output)
     exrtapolated_fcst = tl.convert_nan_to_zeros(exrtapolated_fcst)
-    WriteData(exrtapolated_fcst, pot_data.template, args.output, 'local')
+    WriteData(exrtapolated_fcst, pot_data.template, args.output, 's3' if args.output.startswith('s3://') else 'local')
 
 
 def parse_command_line():
