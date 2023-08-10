@@ -13,9 +13,10 @@ GRIB_MESSAGE_STEP = None
 
 class ReadData:
     def __init__(self, data_file: str,
-                added_hours: int = 0,
-                read_coordinates: bool = False,
-                use_as_template: bool = False):
+                 added_hours: int = 0,
+                 time_steps: int = 0,
+                 read_coordinates: bool = False,
+                 use_as_template: bool = False):
         self.data_file = data_file
         self.mask_nodata = None
         self.data = None
@@ -26,16 +27,16 @@ class ReadData:
         self.dtime = None
         self.forecast_time = None
         self.analysis_time = None
-        self.read(added_hours, read_coordinates, use_as_template)
+        self.read(added_hours, read_coordinates, use_as_template, time_steps)
 
-    def read(self, added_hours, read_coordinates, use_as_template):
+    def read(self, added_hours, read_coordinates, use_as_template, time_steps):
         print(f"Reading {self.data_file}")
         if self.data_file.endswith(".grib2"):
-            self.read_grib(added_hours, read_coordinates, use_as_template)
+            self.read_grib(added_hours, read_coordinates, use_as_template, time_steps)
         else:
             sys.exit("unsupported file type for file: %s" % (self.data_file))
 
-    def read_grib(self, added_hours, read_coordinates, use_as_template):
+    def read_grib(self, added_hours, read_coordinates, use_as_template, time_steps):
         global GRIB_MESSAGE_STEP
         start = time.time()
 
@@ -86,7 +87,7 @@ class ReadData:
                     sys.exit(1)
                 codes_release(gh)
 
-                if len(dtime_ls) > 0:
+                if len(dtime_ls) > time_steps:
                     fp.close()
                     del fp
                     del gh
@@ -110,9 +111,10 @@ class WriteData:
     def __init__(self, interpolated_data,
                  input_meta,
                  output_file: str,
-                 write_option: str):
+                 write_option: str,
+                 t_diff: int = 0):
         self.interpolated_data = interpolated_data.data_f
-        self.t_diff = 1
+        self.t_diff = t_diff
         self.write_option = write_option
         self.template = input_meta
         self.write(output_file)

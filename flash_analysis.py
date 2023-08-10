@@ -24,11 +24,19 @@ class Analysis:
         self.template = data.template
         self.generate_background_params(data)
         grid = self.read_grid(data)
-        background = np.zeros(data.data[0].shape)
+        #background = np.zeros(data.data[0].shape)
+        background = self.get_background_data(data)
         # Read observations from smartmet server
         print("Reading observation data")
         self.points, self.obs = self.read_obs()
         self.output = self.interpolate(grid, background, 'flash')
+
+    @staticmethod
+    def get_background_data(data):
+        background = data.data[0]
+        background[background > 100] = 100
+        background[background < 10] = 0
+        return background
 
     def read_grid(self, data):
         """Top function to read all gridded data"""

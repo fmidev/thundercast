@@ -13,7 +13,7 @@ import tools as tl
 def main():
     pwd = os.getcwd()
     pwd = os.path.split(pwd)[0]
-    fig_out = f"{pwd}/POT_developing/figures/"
+    fig_out = f"{pwd}/thundercast/figures/"
     if os.path.isdir(fig_out) is False:
         os.mkdir(fig_out)
 
@@ -36,7 +36,8 @@ def main():
         nwc_data = tl.generate_nowcast_array(analysis_info)
         wind = tl.calculate_wind_field(nwc_data.data, nwc_data.mask)
         flash_obs = tl.read_flash_obs(args.analysis_time, args.obs_time_window)
-    plot_contourf_map_scandinavia(args.data_file, fig_out, "Probability of thunder nwc 15min 1km",
+
+    plot_contourf_map_scandinavia(args.data_file, fig_out, "Probability of thunder nwc 15min 1km, model base",
                                   obs=flash_obs, wind=wind)
 
 

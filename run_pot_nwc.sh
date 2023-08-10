@@ -42,7 +42,7 @@ generate_time_str() {
 	then
 		((M15=$1-88697655))
   	fi
-  	echo $M15
+  echo $M15
 }
 
 leap_year() {
@@ -65,21 +65,31 @@ leap_year() {
 MINUS15=$(generate_time_str $START_TIME)
 MINUS15=$(leap_year $MINUS15)
 MINUS30=$(generate_time_str $MINUS15)
-MINUS15=$(leap_year $MINUS15)
+MINUS30=$(leap_year $MINUS30)
 MINUS45=$(generate_time_str $MINUS30)
-MINUS15=$(leap_year $MINUS15)
-MINUS60=$(generate_time_str $MINUS45)
-MINUS15=$(leap_year $MINUS15)
+MINUS45=$(leap_year $MINUS45)
 
-FILE0=s3://hrnwc/preop/$START_TIME/interpolated_rprate.grib2
-FILE1=s3://hrnwc/preop/$MINUS15/interpolated_rprate.grib2
-FILE2=s3://hrnwc/preop/$MINUS30/interpolated_rprate.grib2
-FILE3=s3://hrnwc/preop/$MINUS45/interpolated_rprate.grib2
-SOURCE_FILE=s3://hrnwc/preop/$MINUS60/mnwc_tstm.grib2
+FILE0=s3://hrnwc/preop/$START_TIME/$START_TIME-hrnwc-rprate.grib2
+FILE1=s3://hrnwc/preop/$START_TIME/$MINUS15-hrnwc-rprate.grib2
+FILE2=s3://hrnwc/preop/$START_TIME/$MINUS30-hrnwc-rprate.grib2
+FILE3=s3://hrnwc/preop/$START_TIME/$MINUS45-hrnwc-rprate.grib2
+SOURCE_FILE=s3://hrnwc/preop/$START_TIME/mnwc_tstm.grib2
 OUTPUT="$PWD"/test_data/"$START_TIME"_interpolated_tstm.grib2
 
+#Local file run
+#FILE0=/home/korpinen/Documents/STU_kehitys/ukkosen_tod/data/rprate_data/NWC_15/$START_TIME/interpolated_rprate.grib2
+#FILE1=/home/korpinen/Documents/STU_kehitys/ukkosen_tod/data/rprate_data/NWC_15/$MINUS15/interpolated_rprate.grib2
+#FILE2=/home/korpinen/Documents/STU_kehitys/ukkosen_tod/data/rprate_data/NWC_15/$MINUS30/interpolated_rprate.grib2
+#FILE3=/home/korpinen/Documents/STU_kehitys/ukkosen_tod/data/rprate_data/NWC_15/$MINUS45/interpolated_rprate.grib2
+#SOURCE_FILE=/home/korpinen/Documents/STU_kehitys/ukkosen_tod/data/tstm_data/NWC_15/$START_TIME/mnwc_tstm.grib2
+#OUTPUT=/home/korpinen/Documents/STU_kehitys/ukkosen_tod/data/POT_nwm/"$START_TIME"_interpolated_tstm.grib2
+
 #Generating nowcasted forecast for potential of thunder
-$PYTHON ./generate_propability_of_thunder.py --start_time $START_TIME --wind_field_param rprate --obs_time_window 20 --output $OUTPUT --file_source s3 --rprate_0_file $FILE0 --rprate_1_file $FILE1 --rprate_2_file $FILE2 --rprate_3_file $FILE3 --mnwc_tstm_file $SOURCE_FILE
+$PYTHON ./generate_propability_of_thunder.py --start_time $START_TIME --wind_field_param rprate --obs_time_window 20 --output $OUTPUT --file_source local --rprate_0_file $FILE0 --rprate_1_file $FILE1 --rprate_2_file $FILE2 --rprate_3_file $FILE3 --mnwc_tstm_file $SOURCE_FILE
 
 # Generating visualizations for each forecasted timesteps
-#$PYTHON ./plotting.py --data_file $OUTPUT --analysis --analysis_time $START_TIME --rprate_1_file $FILE1 --rprate_2_file $FILE2 --rprate_3_file $FILE3
+#$PYTHON plotting.py --data_file $OUTPUT --obs_time_window 20 --analysis --analysis_time $START_TIME --rprate_1_file $FILE1 --rprate_2_file $FILE2 --rprate_3_file $FILE3
+
+
+
+#/home/korpinen/Documents/STU_kehitys/ukkosen_tod/data/POT_nwm/202305231500_interpolated_tstm.grib2
