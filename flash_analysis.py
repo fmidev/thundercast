@@ -20,16 +20,19 @@ class Analysis:
         self.generate_analysis_field()
 
     def generate_analysis_field(self):
-        data = ReadData(self.origin_file, read_coordinates=True, use_as_template=True)
-        self.template = data.template
-        self.generate_background_params(data)
-        grid = self.read_grid(data)
-        #background = np.zeros(data.data[0].shape)
-        background = self.get_background_data(data)
-        # Read observations from smartmet server
-        print("Reading observation data")
-        self.points, self.obs = self.read_obs()
-        self.output = self.interpolate(grid, background, 'flash')
+        try:
+            print("Reading observation data")
+            self.points, self.obs = self.read_obs()
+            data = ReadData(self.origin_file, read_coordinates=True, use_as_template=True)
+            self.template = data.template
+            self.generate_background_params(data)
+            grid = self.read_grid(data)
+            #background = np.zeros(data.data[0].shape)
+            background = self.get_background_data(data)
+            # Read observations from smartmet server
+            self.output = self.interpolate(grid, background, 'flash')
+        except ValueError as e:
+            raise KeyError("Use MNWC origin data for thundercast")
 
     @staticmethod
     def get_background_data(data):
@@ -91,10 +94,11 @@ class Analysis:
 
         count = len(trad_obs)
         count_old = len(trad_obs_old)
-        if count == 0:
-            print("No near real time observations")
         if count_old == 0:
-            print("No observations at all from select times")
+            print("No older observations from select time")
+            if count == 0:
+                print("No near real time observations")
+                raise ValueError("No any observations")
         return result
 
     def interpolate(self, grid, background, param):

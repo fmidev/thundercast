@@ -8,9 +8,9 @@ class ExtrapolatedNWC:
                  nodata: np.array,
                  n_leadtimes: int = 17,
                  pot_data=None):
-        self.data = data
+        self.data_input = data
         self.nodata = nodata
-        self.data_f = None
+        self.data = None
         self.V = None
         self.n_leadtimes = n_leadtimes
         self.pot = pot_data
@@ -18,14 +18,14 @@ class ExtrapolatedNWC:
 
     def calculate_nwc(self):
         # Estimate the motion field with Lucas-Kanade
-        self.V = tl.calculate_wind_field(self.data, self.nodata)
+        self.V = tl.calculate_wind_field(self.data_input, self.nodata)
         # Extrapolate the last radar observation
         extrapolate = nowcasts.get_method("extrapolation")
         if self.pot is not None:
             try:
-                self.data_f = extrapolate(self.pot[-1, :, :], self.V, self.n_leadtimes)
+                self.data = extrapolate(self.pot[-1, :, :], self.V, self.n_leadtimes)
             except:
-                self.data_f = extrapolate(self.pot, self.V, self.n_leadtimes)
-            self.data_f[self.data_f < 10] = 0.0
+                self.data = extrapolate(self.pot, self.V, self.n_leadtimes)
+            self.data[self.data < 10] = 0.0
         else:
-            self.data_f = extrapolate(self.data[-1, :, :], self.V, self.n_leadtimes)
+            self.data = extrapolate(self.data_input[-1, :, :], self.V, self.n_leadtimes)

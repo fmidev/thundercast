@@ -113,7 +113,7 @@ class WriteData:
                  output_file: str,
                  write_option: str,
                  t_diff: int = 0):
-        self.interpolated_data = interpolated_data.data_f
+        self.interpolated_data = interpolated_data.data
         self.t_diff = t_diff
         self.write_option = write_option
         self.template = input_meta
