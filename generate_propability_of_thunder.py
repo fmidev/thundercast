@@ -26,26 +26,33 @@ def main():
                      args.rprate_2_file,
                      args.rprate_1_file,
                      args.rprate_0_file]
+    time_steps = 0
 
     # create POT_0h analysis grid from observation.
-    pot_data = Analysis(args.mnwc_tstm_file, args.start_time, args.obs_time_window)
-    analysis_info = {}
-    for i, data_file in enumerate(initial_files):
-        data = ReadData(data_file)
-        data_0h, mask_data_0h, time_0h = tl.pick_analysis_data_from_array(data)
-        if i == 0:
-            analysis_info = {"data": [data_0h], "mask": [mask_data_0h], "time": [time_0h]}
-        else:
-            analysis_info["data"].append(data_0h)
-            analysis_info["mask"].append(mask_data_0h)
-            analysis_info["time"].append(time_0h)
-    nwc_data = tl.generate_nowcast_array(analysis_info)
-    analysis_data = nwc_data.data
-    masked_data = nwc_data.mask
-    exrtapolated_fcst = ExtrapolatedNWC(analysis_data, masked_data,
-                                        pot_data=pot_data.output)
-    exrtapolated_fcst = tl.convert_nan_to_zeros(exrtapolated_fcst)
-    WriteData(exrtapolated_fcst, pot_data.template, args.output, 's3' if args.output.startswith('s3://') else 'local')
+    try:
+        pot_data = Analysis(args.mnwc_tstm_file, args.start_time, args.obs_time_window)
+        analysis_info = {}
+        for i, data_file in enumerate(initial_files):
+            data = ReadData(data_file, time_steps=time_steps)
+            data_0h, mask_data_0h, time_0h = tl.pick_analysis_data_from_array(data)
+            if i == 0:
+                analysis_info = {"data": [data_0h], "mask": [mask_data_0h], "time": [time_0h]}
+            else:
+                analysis_info["data"].append(data_0h)
+                analysis_info["mask"].append(mask_data_0h)
+                analysis_info["time"].append(time_0h)
+            nwc_data = tl.generate_nowcast_array(analysis_info)
+        analysis_data = nwc_data.data
+        masked_data = nwc_data.mask
+        exrtapolated_fcst = ExtrapolatedNWC(analysis_data, masked_data,
+                                            pot_data=pot_data.output)
+        exrtapolated_fcst = tl.convert_nan_to_zeros(exrtapolated_fcst)
+        WriteData(exrtapolated_fcst, pot_data.template, args.output,
+                  's3' if args.output.startswith('s3://') else 'local')
+    except KeyError as e:
+        MNWC_fcst = ReadData(args.mnwc_tstm_file, use_as_template=True)
+        WriteData(MNWC_fcst, MNWC_fcst.template, args.output,
+                  's3' if args.output.startswith('s3://') else 'local')
 
 
 def parse_command_line():

@@ -79,11 +79,11 @@ def pick_analysis_data_from_array(data_object):
 
 
 def convert_nan_to_zeros(data):
-    nan_data = data.data_f
+    nan_data = data.data
     for i in range(len(nan_data)):
         nan_val = np.where(np.isnan(nan_data[i]))
         nan_data[i][nan_val] = 0.0
-    data.data_f = nan_data
+    data.data = nan_data
     return data
 
 
