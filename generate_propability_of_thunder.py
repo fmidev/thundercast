@@ -26,22 +26,42 @@ def main():
                      args.rprate_2_file,
                      args.rprate_1_file,
                      args.rprate_0_file]
-    time_steps = 0
 
-    # create POT_0h analysis grid from observation.
+    # Make sure order if from oldest to newest
+    initial_files = tl.pick_files_by_datetime(initial_files, args.start_time)
+    file_not_found = False
     try:
+        # create POT_0h analysis grid from observation.
         pot_data = Analysis(args.mnwc_tstm_file, args.start_time, args.obs_time_window)
         analysis_info = {}
         for i, data_file in enumerate(initial_files):
-            data = ReadData(data_file, time_steps=time_steps)
-            data_0h, mask_data_0h, time_0h = tl.pick_analysis_data_from_array(data)
-            if i == 0:
-                analysis_info = {"data": [data_0h], "mask": [mask_data_0h], "time": [time_0h]}
-            else:
-                analysis_info["data"].append(data_0h)
-                analysis_info["mask"].append(mask_data_0h)
-                analysis_info["time"].append(time_0h)
-            nwc_data = tl.generate_nowcast_array(analysis_info)
+            if file_not_found:
+                break
+            try:
+                data = ReadData(data_file)
+                data_0h, mask_data_0h, time_0h = tl.pick_analysis_data_from_array(data)
+                if i == 0:
+                    analysis_info = {"data": [data_0h], "mask": [mask_data_0h], "time": [time_0h]}
+                elif i > 0:
+                    analysis_info["data"].append(data_0h)
+                    analysis_info["mask"].append(mask_data_0h)
+                    analysis_info["time"].append(time_0h)
+                nwc_data = tl.generate_nowcast_array(analysis_info)
+            except FileNotFoundError as f:
+                print("One or more of rprate-files are missing, use only one latest available file")
+                file_not_found = True
+                nowcast_dates = tl.generate_nowcast_times(args.start_time)
+                for data_file, date in zip(initial_files, nowcast_dates):
+                    data_file = tl.generate_temporary_path(data_file, date)
+                    try:
+                        data = ReadData(data_file, time_steps=3)
+                        analysis_info = {"data": data.data, "mask": data.mask_nodata, "time": data.dtime}
+                        nwc_data = tl.generate_nowcast_array(analysis_info)
+                        break
+                    except FileNotFoundError as ff:
+                        print(f"{data_file} not found")
+                        pass
+        # If all rprate files are missing, this will crash
         analysis_data = nwc_data.data
         masked_data = nwc_data.mask
         exrtapolated_fcst = ExtrapolatedNWC(analysis_data, masked_data,
@@ -50,6 +70,7 @@ def main():
         WriteData(exrtapolated_fcst, pot_data.template, args.output,
                   's3' if args.output.startswith('s3://') else 'local')
     except KeyError as e:
+        # if not model file, this will crash
         MNWC_fcst = ReadData(args.mnwc_tstm_file, use_as_template=True)
         WriteData(MNWC_fcst, MNWC_fcst.template, args.output,
                   's3' if args.output.startswith('s3://') else 'local')

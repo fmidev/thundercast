@@ -1,3 +1,4 @@
+import os
 import datetime
 import numpy as np
 import numpy.ma as ma
@@ -26,10 +27,10 @@ def generate_nowcast_array(analysis_info: dict):
 
 
 def pick_files_by_datetime(files: list, datetime_zero: str):
-    datetime_zero = dt.strptime(datetime_zero, "%Y%m%d%H")
-    datetimes = [datetime_zero - td(hours=int(x)) for x in range(5)]
-    initial_files = [f for f in files for d in datetimes if d.strftime("%Y%m%d%H") in f]
-    initial_files.sort()
+    datetime_zero = dt.strptime(datetime_zero, "%Y%m%d%H%M")
+    datetimes = [datetime_zero - td(minutes=int(x)) for x in np.arange(0, 60, 15)]
+    initial_files = [f for f in files for d in datetimes if d.strftime("%Y%m%d%H%M") in os.path.split(f)[-1]]
+    initial_files.sort(key=lambda x: x.split('/')[-1])
     return initial_files
 
 
@@ -41,15 +42,22 @@ def fetch_wanted_date_files(param: str, path: Union[str, None] = None):
     return initial_files
 
 
-def generate_nowcast_times(time_freq: int = 15, end_time: int = 60):
-    near_real_time = round_current_time_in_quarter()
-    nowcast_times_str = [near_real_time]
-    analysis_datetime = dt.strptime(near_real_time, '%Y%m%d%H%M')
+def generate_nowcast_times(starttime: str, time_freq: int = 15, end_time: int = 60):
+    nowcast_times_str = [starttime]
+    analysis_datetime = dt.strptime(starttime, '%Y%m%d%H%M')
     for x in np.arange(time_freq, end_time, time_freq):
         nwc_datetime = analysis_datetime - td(minutes=int(x))
         nowcast_times_str.append(dt.strftime(nwc_datetime, '%Y%m%d%H%M'))
     nowcast_times_str.sort()
     return nowcast_times_str
+
+
+# todo: rename this function
+def generate_temporary_path(path: str, date: str) -> str:
+    sep = 'preop/'
+    stripped = path.split(sep, 1)[0]
+    new_path = stripped + sep + date + "/interpolated_rprate.grib2"
+    return new_path
 
 
 def fetch_data_file(file_path: Union[str, None], nwc_time: str, param: str):
