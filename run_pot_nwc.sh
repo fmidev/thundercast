@@ -69,21 +69,24 @@ MINUS30=$(leap_year $MINUS30)
 MINUS45=$(generate_time_str $MINUS30)
 MINUS45=$(leap_year $MINUS45)
 
-#FILE0=s3://hrnwc/preop/$START_TIME/$START_TIME-hrnwc-rprate.grib2
-#FILE1=s3://hrnwc/preop/$START_TIME/$MINUS15-hrnwc-rprate.grib2
-#FILE2=s3://hrnwc/preop/$START_TIME/$MINUS30-hrnwc-rprate.grib2
-#FILE3=s3://hrnwc/preop/$START_TIME/$MINUS45-hrnwc-rprate.grib2
-#SOURCE_FILE=s3://hrnwc/preop/$START_TIME/mnwc_tstm.grib2
-#OUTPUT="$PWD"/test_data/"$START_TIME"_interpolated_tstm.grib2
+# Check if "test_data" is in project, if not create
+mkdir -p "$PWD"/test_data
+
+FILE0=s3://hrnwc/preop/$START_TIME/$START_TIME-hrnwc-rprate.grib2
+FILE1=s3://hrnwc/preop/$START_TIME/$MINUS15-hrnwc-rprate.grib2
+FILE2=s3://hrnwc/preop/$START_TIME/$MINUS30-hrnwc-rprate.grib2
+FILE3=s3://hrnwc/preop/$START_TIME/$MINUS45-hrnwc-rprate.grib2
+SOURCE_FILE=s3://hrnwc/preop/$START_TIME/mnwc_tstm.grib2
+OUTPUT="$PWD"/test_data/"$START_TIME"_interpolated_tstm.grib2
 
 #Local file run
 # Create needed directories and download data to your "test_data" directory. You can modify file path if needed
-FILE0=$PWD/test_data/$START_TIME/$START_TIME-hrnwc-rprate.grib2
-FILE1=$PWD/test_data/$START_TIME/$MINUS15-hrnwc-rprate.grib2
-FILE2=$PWD/test_data/$START_TIME/$MINUS30-hrnwc-rprate.grib2
-FILE3=$PWD/test_data/$START_TIME/$MINUS45-hrnwc-rprate.grib2
-SOURCE_FILE=$PWD/test_data/$START_TIME/mnwc_tstm.grib2
-OUTPUT=$PWD/test_data/"$START_TIME"_interpolated_tstm.grib2
+#FILE0=$PWD/test_data/$START_TIME/$START_TIME-hrnwc-rprate.grib2
+#FILE1=$PWD/test_data/$START_TIME/$MINUS15-hrnwc-rprate.grib2
+#FILE2=$PWD/test_data/$START_TIME/$MINUS30-hrnwc-rprate.grib2
+#FILE3=$PWD/test_data/$START_TIME/$MINUS45-hrnwc-rprate.grib2
+#SOURCE_FILE=$PWD/test_data/$START_TIME/mnwc_tstm.grib2
+#OUTPUT=$PWD/test_data/"$START_TIME"_interpolated_tstm.grib2
 
 #Generating nowcasted forecast for potential of thunder
 $PYTHON ./generate_propability_of_thunder.py --start_time $START_TIME --wind_field_param rprate --obs_time_window 20 --output $OUTPUT --file_source local --rprate_0_file $FILE0 --rprate_1_file $FILE1 --rprate_2_file $FILE2 --rprate_3_file $FILE3 --mnwc_tstm_file $SOURCE_FILE
