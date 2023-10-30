@@ -1,0 +1,15 @@
+on: # yamllint disable-line rule:truthy
+  push:
+    branches: ["master"]
+
+name: Create container image
+
+jobs:
+  call-image-build-workflow:
+    uses: fmidev/github-actions-workflows/imagebuild-workflow.yaml@master
+    with:
+      image_name: thundercast
+      image_test_command: python3 generate_propability_of_thunder.py --help
+    secrets:
+      QUAY_USER: ${{ secrets.QUAY_USER }}
+      QUAY_TOKEN: ${{ secrets.QUAY_TOKEN }}
