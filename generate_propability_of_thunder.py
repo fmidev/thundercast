@@ -71,7 +71,7 @@ def main():
                   's3' if args.output.startswith('s3://') else 'local')
     except KeyError as e:
         # if not model file, this will crash
-        MNWC_fcst = ReadData(args.mnwc_tstm_file, use_as_template=True, time_steps=4)
+        MNWC_fcst = ReadData(args.mnwc_tstm_file, use_as_template=True, time_steps=17)
         WriteData(MNWC_fcst, MNWC_fcst.template, args.output,
                   's3' if args.output.startswith('s3://') else 'local')
 
