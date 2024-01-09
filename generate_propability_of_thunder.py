@@ -29,30 +29,32 @@ def main():
 
     # Make sure order if from oldest to newest
     initial_files = tl.pick_files_by_datetime(initial_files, args.start_time)
-    file_not_found = False
     try:
         # create POT_0h analysis grid from observation.
+        # If no observations, use model data only
         pot_data = Analysis(args.mnwc_tstm_file, args.start_time, args.obs_time_window)
-        analysis_info = {}
+
+        # Read data for generating a wind field
+        file_not_found = False
         for i, data_file in enumerate(initial_files):
             if file_not_found:
+                print("Not enough input datafiles, can't process Thundecast")
                 break
+
             try:
                 data = ReadData(data_file)
-                data_0h, mask_data_0h, time_0h = tl.pick_analysis_data_from_array(data)
                 if i == 0:
-                    analysis_info = {"data": [data_0h], "mask": [mask_data_0h], "time": [time_0h]}
+                    analysis_info = tl.create_dict(data)
                 elif i > 0:
-                    analysis_info["data"].append(data_0h)
-                    analysis_info["mask"].append(mask_data_0h)
-                    analysis_info["time"].append(time_0h)
+                    analysis_info = tl.add_to_dict(analysis_info, data)
                 nwc_data = tl.generate_nowcast_array(analysis_info)
+
             except FileNotFoundError as f:
-                print("One or more of rprate-files are missing, use only one latest available file")
+                print("One or more of rprate-files are missing, use latest file if exist")
                 file_not_found = True
                 nowcast_dates = tl.generate_nowcast_times(args.start_time)
-                for data_file, date in zip(initial_files, nowcast_dates):
-                    data_file = tl.generate_temporary_path(data_file, date)
+                for data_file, date in zip(initial_files[::-1], nowcast_dates):
+                    data_file = tl.generate_backup_data_path(data_file, date)
                     try:
                         data = ReadData(data_file, time_steps=3)
                         analysis_info = {"data": data.data, "mask": data.mask_nodata, "time": data.dtime}
@@ -71,7 +73,7 @@ def main():
                   's3' if args.output.startswith('s3://') else 'local')
     except KeyError as e:
         # if not model file, this will crash
-        MNWC_fcst = ReadData(args.mnwc_tstm_file, use_as_template=True, time_steps=17)
+        MNWC_fcst = ReadData(args.mnwc_tstm_file, use_as_template=True, time_steps=16)
         WriteData(MNWC_fcst, MNWC_fcst.template, args.output,
                   's3' if args.output.startswith('s3://') else 'local')
 
