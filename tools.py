@@ -26,19 +26,23 @@ def generate_nowcast_array(analysis_info: dict):
     return nwc_data
 
 
+def create_dict(data):
+    dict = {"data": [data.data], "mask": [data.mask_nodata], "time": [data.dtime]}
+    return dict
+
+
+def add_to_dict(dict, data):
+    dict["data"].append(data.data)
+    dict["mask"].append(data.mask_nodata)
+    dict["time"].append(data.dtime)
+    return dict
+
+
 def pick_files_by_datetime(files: list, datetime_zero: str):
     datetime_zero = dt.strptime(datetime_zero, "%Y%m%d%H%M")
     datetimes = [datetime_zero - td(minutes=int(x)) for x in np.arange(0, 60, 15)]
     initial_files = [f for f in files for d in datetimes if d.strftime("%Y%m%d%H%M") in os.path.split(f)[-1]]
     initial_files.sort(key=lambda x: x.split('/')[-1])
-    return initial_files
-
-
-def fetch_wanted_date_files(param: str, path: Union[str, None] = None):
-    initial_files = []
-    nwc_times = generate_nowcast_times()
-    for nwc_t in nwc_times:
-        initial_files.append(fetch_data_file(path, nwc_t, param))
     return initial_files
 
 
@@ -48,12 +52,11 @@ def generate_nowcast_times(starttime: str, time_freq: int = 15, end_time: int = 
     for x in np.arange(time_freq, end_time, time_freq):
         nwc_datetime = analysis_datetime - td(minutes=int(x))
         nowcast_times_str.append(dt.strftime(nwc_datetime, '%Y%m%d%H%M'))
-    nowcast_times_str.sort()
+    #nowcast_times_str.sort()
     return nowcast_times_str
 
 
-# todo: rename this function
-def generate_temporary_path(path: str, date: str) -> str:
+def generate_backup_data_path(path: str, date: str) -> str:
     sep = 'preop/'
     stripped = path.split(sep, 1)[0]
     new_path = stripped + sep + date + "/interpolated_rprate.grib2"
@@ -92,6 +95,12 @@ def convert_nan_to_zeros(data):
         nan_val = np.where(np.isnan(nan_data[i]))
         nan_data[i][nan_val] = 0.0
     data.data = nan_data
+    return data
+
+
+def mask_missing_data(data: np.array, mask_nodata: np.array) -> np.array:
+    data[~np.isfinite(mask_nodata)] = np.nan
+    data[data == 9999] = np.nan
     return data
 
 
