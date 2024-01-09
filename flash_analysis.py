@@ -120,4 +120,3 @@ class Analysis:
     def generate_background_params(self, data):
         self.latitudes = data.latitudes
         self.longitudes = data.longitudes
-        
