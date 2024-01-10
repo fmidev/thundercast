@@ -1,3 +1,4 @@
+import sys
 import argparse
 import tools as tl
 from file_utils import ReadData, WriteData
@@ -34,11 +35,17 @@ def main():
         # If no observations, use model data only
         pot_data = Analysis(args.mnwc_tstm_file, args.start_time, args.obs_time_window)
 
-        # Read data for generating a wind field
+        # booleans for some or all missing files
         file_not_found = False
+        no_input_files = False
+
+        # Read data for generating a wind field
         for i, data_file in enumerate(initial_files):
+            if no_input_files:
+                print(f"Not enough input datafiles to process Thundercast!")
+                sys.exit(1)
             if file_not_found:
-                print("Not enough input datafiles, can't process Thundecast")
+                print(f"Windfield calculation Backup file {rp_file} used!")
                 break
 
             try:
@@ -47,26 +54,26 @@ def main():
                     analysis_info = tl.create_dict(data)
                 elif i > 0:
                     analysis_info = tl.add_to_dict(analysis_info, data)
-                nwc_data = tl.generate_nowcast_array(analysis_info)
 
             except FileNotFoundError as f:
                 print("One or more of rprate-files are missing, use latest file if exist")
                 file_not_found = True
                 nowcast_dates = tl.generate_nowcast_times(args.start_time)
-                for data_file, date in zip(initial_files[::-1], nowcast_dates):
-                    data_file = tl.generate_backup_data_path(data_file, date)
+                for i, (data_file, date) in enumerate(zip(initial_files, reversed(nowcast_dates))):
+                    rp_file = tl.generate_backup_data_path(data_file, date)
                     try:
-                        data = ReadData(data_file, time_steps=3)
+                        data = ReadData(rp_file, time_steps=3)
                         analysis_info = {"data": data.data, "mask": data.mask_nodata, "time": data.dtime}
                         nwc_data = tl.generate_nowcast_array(analysis_info)
                         break
                     except FileNotFoundError as ff:
                         print(f"{data_file} not found")
+                        if i == len(initial_files) - 1:
+                            no_input_files = True
                         pass
-        # If all rprate files are missing, this will crash
-        analysis_data = nwc_data.data
-        masked_data = nwc_data.mask
-        exrtapolated_fcst = ExtrapolatedNWC(analysis_data, masked_data,
+        if not file_not_found:
+            nwc_data = tl.generate_nowcast_array(analysis_info)
+        exrtapolated_fcst = ExtrapolatedNWC(nwc_data.data,  nwc_data.mask,
                                             pot_data=pot_data.output)
         exrtapolated_fcst = tl.convert_nan_to_zeros(exrtapolated_fcst)
         WriteData(exrtapolated_fcst, pot_data.template, args.output,
@@ -96,4 +103,3 @@ def parse_command_line():
 
 if __name__ == '__main__':
     main()
-
