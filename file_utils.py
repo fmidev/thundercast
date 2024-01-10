@@ -28,7 +28,6 @@ class ReadData:
         self.forecast_time = None
         self.analysis_time = None
         self.read(added_hours, read_coordinates, use_as_template, time_steps)
-        self.data = mask_missing_data(self.data, self.mask_nodata)
 
     def read(self, added_hours, read_coordinates, use_as_template, time_steps):
         print(f"Reading {self.data_file}")

@@ -2,6 +2,7 @@ import gridpp
 import numpy as np
 import requests
 import pandas as pd
+import tools as tl
 from datetime import datetime as dt
 from file_utils import ReadData
 
@@ -24,12 +25,11 @@ class Analysis:
             print("Reading observation data")
             self.points, self.obs = self.read_obs()
             data = ReadData(self.origin_file, read_coordinates=True, use_as_template=True)
+            data.data = tl.mask_missing_data(data.data, data.mask_nodata)
             self.template = data.template
             self.generate_background_params(data)
             grid = self.read_grid(data)
-            #background = np.zeros(data.data[0].shape)
             background = self.get_background_data(data)
-            # Read observations from smartmet server
             self.output = self.interpolate(grid, background, 'flash')
         except ValueError as e:
             raise KeyError("Use MNWC origin data for thundercast")
