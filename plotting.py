@@ -6,7 +6,7 @@ from datetime import datetime as dt
 from datetime import timedelta as td
 from mpl_toolkits.basemap import Basemap
 import cartopy
-from file_utils import ReadDataPlotting, ReadData
+from file_utils import ReadData
 import tools as tl
 
 
@@ -20,6 +20,7 @@ def main():
     args = parse_command_line()
     wind = None
     flash_obs = None
+
     if args.analysis is True:
         analysis_info = {}
         initial_files = [args.rprate_3_file,
@@ -27,17 +28,17 @@ def main():
                          args.rprate_1_file]
         for i, data_file in enumerate(initial_files):
             data = ReadData(data_file)
-            data_0h, mask_data_0h, time_0h = tl.pick_analysis_data_from_array(data)
             if i == 0:
-                analysis_info = {"data": [data_0h], "mask": [mask_data_0h], "time": [time_0h]}
-            else:
-                analysis_info["data"].append(data_0h)
-                analysis_info["mask"].append(mask_data_0h)
+                analysis_info = tl.create_dict(data)
+            elif i > 0:
+                analysis_info = tl.add_to_dict(analysis_info, data)
         nwc_data = tl.generate_nowcast_array(analysis_info)
         wind = tl.calculate_wind_field(nwc_data.data, nwc_data.mask)
         flash_obs = tl.read_flash_obs(args.analysis_time, args.obs_time_window)
+        if len(flash_obs) == 0:
+            flash_obs = None
 
-    plot_contourf_map_scandinavia(args.data_file, fig_out, "Probability of thunder nwc 15min 1km, model base",
+    plot_contourf_map_scandinavia(args.data_file, fig_out, "Probability of thunder mnwc 15min 1km, model base",
                                   obs=flash_obs, wind=wind)
 
 
@@ -61,7 +62,8 @@ def plot_contourf_map_scandinavia(data, outfile, title, obs=None,
     For xarray to work with grib-files, cfgrib must be installed
     """
     if isinstance(data, str):
-        data = ReadDataPlotting(data)
+        data = ReadData(data, read_coordinates=True, time_steps=16)
+        data.data = tl.mask_missing_data(data.data, data.mask_nodata)
     lon = data.longitudes
     lat = data.latitudes
     fig_date = data.analysis_time
@@ -107,7 +109,7 @@ def plot_NWC_data_imshow_polster(data, outfile, title, obs=None,
     Only for Scandinavian domain. For other domains coordinates must be changed.
     """
     if isinstance(data, str):
-        data = ReadDataPlotting(data)
+        data = ReadData(data, read_coordinates=True, time_steps=16)
     cmap = 'Blues'  # RdBl_r  'Blues' 'Jet' 'RdYlGn_r'
     lon = data.longitudes
     lat = data.latitudes
