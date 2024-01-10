@@ -27,14 +27,14 @@ def generate_nowcast_array(analysis_info: dict):
 
 
 def create_dict(data):
-    dict = {"data": [data.data], "mask": [data.mask_nodata], "time": [data.dtime]}
+    dict = {"data": [data.data[0]], "mask": [data.mask_nodata[0]], "time": [data.dtime[0]]}
     return dict
 
 
 def add_to_dict(dict, data):
-    dict["data"].append(data.data)
-    dict["mask"].append(data.mask_nodata)
-    dict["time"].append(data.dtime)
+    dict["data"].append(data.data[0])
+    dict["mask"].append(data.mask_nodata[0])
+    dict["time"].append(data.dtime[0])
     return dict
 
 
