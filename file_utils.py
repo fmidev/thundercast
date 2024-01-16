@@ -121,6 +121,7 @@ class WriteData:
 
     def write(self, output_file):
         if self.write_option == "s3":
+            endpoint_url = os.environ.get("S3_HOSTNAME", "https://routines-data.lake.fmi.fi")
             openfile = fsspec.open(
                 "simplecache::{}".format(output_file),
                 "wb",
@@ -128,7 +129,7 @@ class WriteData:
                     "anon": False,
                     "key": os.environ["S3_ACCESS_KEY_ID"],
                     "secret": os.environ["S3_SECRET_ACCESS_KEY"],
-                    "client_kwargs": {"endpoint_url": "https://routines-data.lake.fmi.fi"},
+                    "client_kwargs": {"endpoint_url": endpoint_url},
                 },
             )
             with openfile as fpout:
