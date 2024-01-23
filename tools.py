@@ -52,7 +52,6 @@ def generate_nowcast_times(starttime: str, time_freq: int = 15, end_time: int = 
     for x in np.arange(time_freq, end_time, time_freq):
         nwc_datetime = analysis_datetime - td(minutes=int(x))
         nowcast_times_str.append(dt.strftime(nwc_datetime, '%Y%m%d%H%M'))
-    #nowcast_times_str.sort()
     return nowcast_times_str
 
 
