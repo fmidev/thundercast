@@ -31,7 +31,8 @@ $ git clone https://github.com/fmidev/thundercast
 $ cd thundercast/
 $ python3 -m venv venv
 $ source venv/bin/activate
-(venv) $ python3 -m pip install .
+(venv) $ python3 -m pip install -r requirements.txt
+(venv) $ chmod +x run_pot_nwc.sh
 (venv) $ python3 run_pot_nwc.sh TODAY
 ```
 Define `TODAY` as date today or date from last 24 hours from current time in format `yyyymmddhhMM`.
