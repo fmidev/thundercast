@@ -9,6 +9,7 @@ from datetime import timedelta as td
 import pandas as pd
 import fsspec
 import requests
+import warnings
 from pysteps import motion
 
 
@@ -38,6 +39,27 @@ def add_to_dict(dict, data):
     return dict
 
 
+def validate_and_sort_filenames(filenames, start_time):
+    wrong_file = False
+    for i in range(len(filenames) - 1):
+        f = os.path.split(filenames[i])[-1]
+        ff = os.path.split(filenames[i + 1])[-1]
+        date_obj = dt.strptime(f.split("-")[0], "%Y%m%d%H%M")
+        date_obj_next = dt.strptime(ff.split("-")[0], "%Y%m%d%H%M")
+        if (date_obj_next - date_obj).total_seconds() != 900:
+            warnings.warn(f"File {filenames[i]} or {filenames[i + 1]} has wrong timestamp!")
+            wrong_file = True
+            continue
+    sorted_filenames = [filename for filename in sorted(filenames, reverse=False)]
+    if wrong_file:
+        wrong_files = pick_files_by_datetime(filenames, start_time)
+        if sorted_filenames == wrong_files:
+            for check_f in sorted_filenames:
+                if start_time in os.path.split(check_f)[-1]:
+                    wrong_file = False
+    return sorted_filenames, wrong_file
+
+
 def pick_files_by_datetime(files: list, datetime_zero: str):
     datetime_zero = dt.strptime(datetime_zero, "%Y%m%d%H%M")
     datetimes = [datetime_zero - td(minutes=int(x)) for x in np.arange(0, 60, 15)]
@@ -55,10 +77,9 @@ def generate_nowcast_times(starttime: str, time_freq: int = 15, end_time: int = 
     return nowcast_times_str
 
 
-def generate_backup_data_path(path: str, date: str) -> str:
-    sep = 'preop/'
-    stripped = path.split(sep, 1)[0]
-    new_path = stripped + sep + date + "/interpolated_rprate.grib2"
+def generate_backup_data_path(path: str) -> str:
+    stripped = os.path.split(path)[0]
+    new_path = stripped + "/interpolated_rprate.grib2"
     return new_path
 
 
@@ -113,7 +134,7 @@ def calculate_wind_field(data, nodata):
 
 def read_file_from_s3(data_file):
     uri = "simplecache::{}".format(data_file)
-    endpoint_url = os.environ.get('S3_HOSTNAME', 'https://routines-data.lake.fmi.fi')
+    endpoint_url = os.environ.get('S3_HOSTNAME', 'https://routines-data-prod.lake.fmi.fi')
     return fsspec.open_local(uri, s3={'anon': True, 'client_kwargs': {'endpoint_url': endpoint_url}})
 
 

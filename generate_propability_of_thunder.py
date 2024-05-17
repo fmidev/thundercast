@@ -23,56 +23,47 @@ def main():
 
     """
     args = parse_command_line()
-    initial_files = [args.rprate_3_file,
-                     args.rprate_2_file,
-                     args.rprate_1_file,
-                     args.rprate_0_file]
-
-    # Make sure order if from oldest to newest
-    initial_files = tl.pick_files_by_datetime(initial_files, args.start_time)
+    # Make sure order if from oldest to newest, check any wrong files
+    initial_files, wrong_file = tl.validate_and_sort_filenames([args.rprate_3_file, args.rprate_2_file,
+                                                                args.rprate_1_file, args.rprate_0_file],
+                                                               args.start_time)
     try:
         # create POT_0h analysis grid from observation.
-        # If no observations, use model data only
+        # If no observations, use model data only. If no model data, everything will break
         pot_data = Analysis(args.mnwc_tstm_file, args.start_time, args.obs_time_window)
 
-        # booleans for some or all missing files
-        file_not_found = False
-        no_input_files = False
-
         # Read data for generating a wind field
-        for i, data_file in enumerate(initial_files):
-            if no_input_files:
-                print(f"Not enough input datafiles to process Thundercast!")
-                sys.exit(1)
-            if file_not_found:
-                print(f"Windfield calculation Backup file {rp_file} used!")
-                break
+        if len(initial_files) == 4 and wrong_file is False:
+            for i, data_file in enumerate(initial_files):
+                try:
+                    data = ReadData(data_file)
+                    if i == 0:
+                        analysis_info = tl.create_dict(data)
+                    elif i > 0:
+                        analysis_info = tl.add_to_dict(analysis_info, data)
 
-            try:
-                data = ReadData(data_file)
-                if i == 0:
-                    analysis_info = tl.create_dict(data)
-                elif i > 0:
-                    analysis_info = tl.add_to_dict(analysis_info, data)
-
-            except FileNotFoundError as f:
-                print("One or more of rprate-files are missing, use latest file if exist")
-                file_not_found = True
-                nowcast_dates = tl.generate_nowcast_times(args.start_time)
-                for i, (data_file, date) in enumerate(zip(initial_files, reversed(nowcast_dates))):
-                    rp_file = tl.generate_backup_data_path(data_file, date)
+                except FileNotFoundError as f:
+                    print("Some of rprate-files are missing, use latest file if exist")
+                    # Generate path to a latest full precipitation rate file
+                    rp_file = tl.generate_backup_data_path(initial_files[-1])
                     try:
                         data = ReadData(rp_file, time_steps=3)
                         analysis_info = {"data": data.data, "mask": data.mask_nodata, "time": data.dtime}
-                        nwc_data = tl.generate_nowcast_array(analysis_info)
                         break
                     except FileNotFoundError as ff:
-                        print(f"{data_file} not found")
-                        if i == len(initial_files) - 1:
-                            no_input_files = True
-                        pass
-        if not file_not_found:
-            nwc_data = tl.generate_nowcast_array(analysis_info)
+                        print(f"{rp_file} not found")
+                        raise FileNotFoundError(f"No precipitation intensity file {rp_file} found!")
+        else:
+            print("Some of rprate-files are wrong or missing, use latest rp-file if exist")
+            rp_file = tl.generate_backup_data_path(initial_files[-1])
+            try:
+                data = ReadData(rp_file, time_steps=3)
+                analysis_info = {"data": data.data, "mask": data.mask_nodata, "time": data.dtime}
+            except FileNotFoundError as ff:
+                print(f"{rp_file} not found")
+                raise FileNotFoundError(f"No precipitation intensity file {rp_file} found!")
+
+        nwc_data = tl.generate_nowcast_array(analysis_info)
         exrtapolated_fcst = ExtrapolatedNWC(nwc_data.data,  nwc_data.mask,
                                             pot_data=pot_data.output)
         exrtapolated_fcst = tl.convert_nan_to_zeros(exrtapolated_fcst)
