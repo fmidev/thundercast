@@ -45,29 +45,14 @@ generate_time_str() {
   echo $M15
 }
 
-leap_year() {
-	leap=$(date +"%Y")
-	if [ `expr $leap % 400` -eq 0 ]
-	then
-		((M15=$1+10000))
-	elif [ `expr $leap % 100` -eq 0 ]
-	then
-		((M15=$1))
-	elif [ `expr $leap % 4` -eq 0 ]
-	then
-		((M15=$1+10000))
-	else
-		((M15=$1))
-	fi
-	echo $M15
-}
-
 MINUS15=$(generate_time_str $START_TIME)
-MINUS15=$(leap_year $MINUS15)
 MINUS30=$(generate_time_str $MINUS15)
-MINUS30=$(leap_year $MINUS30)
 MINUS45=$(generate_time_str $MINUS30)
-MINUS45=$(leap_year $MINUS45)
+
+echo $START_TIME
+echo $MINUS15
+echo $MINUS30
+echo $MINUS45
 
 # Check if "test_data" is in project, if not create
 mkdir -p "$PWD"/test_data
