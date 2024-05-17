@@ -33,6 +33,9 @@ class Analysis:
             self.output = self.interpolate(grid, background, 'flash')
         except ValueError as e:
             raise KeyError("Use MNWC origin data for thundercast")
+        except FileNotFoundError as f:
+            raise KeyError("No MNWC tstm-file to use as base data")
+
 
     @staticmethod
     def get_background_data(data):
