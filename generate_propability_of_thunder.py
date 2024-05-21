@@ -25,15 +25,14 @@ def main():
     args = parse_command_line()
     # Make sure order if from oldest to newest, check any wrong files
     initial_files, wrong_file = tl.validate_and_sort_filenames([args.rprate_3_file, args.rprate_2_file,
-                                                                args.rprate_1_file, args.rprate_0_file],
-                                                               args.start_time)
+                                                                args.rprate_1_file, args.rprate_0_file])
     try:
         # create POT_0h analysis grid from observation.
         # If no observations, use model data only. If no model data, everything will break
         pot_data = Analysis(args.mnwc_tstm_file, args.start_time, args.obs_time_window)
 
         # Read data for generating a wind field
-        if len(initial_files) == 4 and wrong_file is False:
+        if len(initial_files) == 4:
             for i, data_file in enumerate(initial_files):
                 try:
                     data = ReadData(data_file)
