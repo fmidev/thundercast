@@ -24,7 +24,7 @@ def main():
     """
     args = parse_command_line()
     # Make sure order if from oldest to newest, check any wrong files
-    initial_files, wrong_file = tl.validate_and_sort_filenames([args.rprate_3_file, args.rprate_2_file,
+    initial_files = tl.validate_and_sort_filenames([args.rprate_3_file, args.rprate_2_file,
                                                                 args.rprate_1_file, args.rprate_0_file])
     try:
         # create POT_0h analysis grid from observation.
