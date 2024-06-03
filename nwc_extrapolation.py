@@ -37,9 +37,12 @@ class ExtrapolatedNWC:
         self.V = tl.calculate_wind_field(self.data_input, self.nodata)
         if self.pot is not None:
             try:
-                self.data = linda.forecast(self.pot[-1, :, :], self.V, self.n_leadtimes)
-            except:
                 self.data = linda.forecast(self.pot, self.V, self.n_leadtimes)
+            except:
+                zeros = np.zeros(self.pot.shape)
+                new_pot = np.array([zeros, zeros, self.pot])
+                self.data = linda.forecast(new_pot, self.V, self.n_leadtimes, "domain",
+                                           vel_pert_method=None, add_perturbations=False)
             self.data[self.data < 10] = 0.0
         else:
             self.data = linda.forecast(self.data_input[-1, :, :], self.V, self.n_leadtimes)

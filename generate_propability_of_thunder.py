@@ -25,7 +25,7 @@ def main():
     args = parse_command_line()
     # Make sure order if from oldest to newest, check any wrong files
     initial_files = tl.validate_and_sort_filenames([args.rprate_3_file, args.rprate_2_file,
-                                                                args.rprate_1_file, args.rprate_0_file])
+                                                    args.rprate_1_file, args.rprate_0_file])
     try:
         # create POT_0h analysis grid from observation.
         # If no observations, use model data only. If no model data, everything will break
@@ -62,6 +62,7 @@ def main():
                 print(f"{rp_file} not found")
                 raise FileNotFoundError(f"No precipitation intensity file {rp_file} found!")
 
+        print("Calculate a motion vector field")
         nwc_data = tl.generate_nowcast_array(analysis_info)
         exrtapolated_fcst = ExtrapolatedNWC(nwc_data.data,  nwc_data.mask,
                                             pot_data=pot_data.output)
