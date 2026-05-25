@@ -80,7 +80,7 @@ def fetch_data_file(file_path: Union[str, None], nwc_time: str, param: str):
     if not file_path:
         if param == 'rprate':
             param_file = 'interpolated_rprate.grib2'
-        file_path = f"s3://routines-data.lake.fmi.fi/hrnwc/development/{nwc_time}/{param_file}"
+        file_path = f"s3://{get_s3_hostname()}/hrnwc/development/{nwc_time}/{param_file}"
     return file_path
 
 
@@ -126,8 +126,21 @@ def calculate_wind_field(data, nodata):
 
 def read_file_from_s3(data_file):
     uri = "simplecache::{}".format(data_file)
-    endpoint_url = os.environ.get('S3_HOSTNAME', 'https://routines-data-prod.lake.fmi.fi')
+    endpoint_url = get_s3_endpoint_url()
     return fsspec.open_local(uri, s3={'anon': True, 'client_kwargs': {'endpoint_url': endpoint_url}})
+
+
+def get_s3_hostname() -> str:
+    s3_hostname = os.environ.get("S3_HOSTNAME", "lake.fmi.fi")
+    s3_hostname = s3_hostname.replace("https://", "").replace("http://", "")
+    return s3_hostname.rstrip("/")
+
+
+def get_s3_endpoint_url() -> str:
+    s3_hostname = os.environ.get("S3_HOSTNAME", "lake.fmi.fi")
+    if s3_hostname.startswith(("https://", "http://")):
+        return s3_hostname.rstrip("/")
+    return f"https://{s3_hostname.rstrip('/')}"
 
 
 def read_flash_txt_to_array(file_path):

@@ -5,7 +5,7 @@ import datetime
 import numpy as np
 import os
 import fsspec
-from tools import read_file_from_s3, mask_missing_data
+from tools import read_file_from_s3, mask_missing_data, get_s3_endpoint_url
 import gc
 
 GRIB_MESSAGE_STEP = None
@@ -123,7 +123,7 @@ class WriteData:
 
     def write(self, output_file):
         if self.write_option == "s3":
-            endpoint_url = os.environ.get("S3_HOSTNAME", "https://routines-data.lake.fmi.fi")
+            endpoint_url = get_s3_endpoint_url()
             openfile = fsspec.open(
                 "simplecache::{}".format(output_file),
                 "wb",
