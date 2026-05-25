@@ -80,7 +80,7 @@ def fetch_data_file(file_path: Union[str, None], nwc_time: str, param: str):
     if not file_path:
         if param == 'rprate':
             param_file = 'interpolated_rprate.grib2'
-        file_path = f"s3://routines-data.lake.fmi.fi/hrnwc/development/{nwc_time}/{param_file}"
+        file_path = f"s3://routines-data/hrnwc/development/{nwc_time}/{param_file}"
     return file_path
 
 
