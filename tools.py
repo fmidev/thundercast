@@ -127,7 +127,11 @@ def calculate_wind_field(data, nodata):
 def read_file_from_s3(data_file):
     uri = "simplecache::{}".format(data_file)
     endpoint_url = os.environ.get('S3_HOSTNAME', 'https://routines-data-prod.lake.fmi.fi')
-    return fsspec.open_local(uri, s3={'anon': True, 'client_kwargs': {'endpoint_url': endpoint_url}})
+    return fsspec.open_local(uri, s3={
+                    "anon": False,
+                    "key": os.environ["S3_ACCESS_KEY_ID"],
+                    "secret": os.environ["S3_SECRET_ACCESS_KEY"],
+                    "client_kwargs": {"endpoint_url": endpoint_url}},)
 
 
 def read_flash_txt_to_array(file_path):
